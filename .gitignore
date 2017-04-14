@@ -1,0 +1,7 @@
+nfXml/
+nfXml2/
+stable/
+temp/
+*.FXP
+*.BAK
+test-serializer.prg
