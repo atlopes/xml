@@ -1,3 +1,8 @@
+* install itself
+IF !"\XMLSERVICE.FXP" $ SET("Procedure")
+	SET PROCEDURE TO SYS(16) ADDITIVE
+ENDIF
+
 DEFINE CLASS XMLService AS Custom 
 
 	_memberdata = '<VFPData>' + ;
@@ -47,18 +52,16 @@ DEFINE CLASS XMLService AS Custom
 	ENDFUNC
 
 	FUNCTION Encode AS String
-	LPARAMETERS tcString AS String, tlCData AS Boolean
-	LOCAL lcString AS String
+	LPARAMETERS Source AS String, CData AS Boolean
+	LOCAL Encoded AS String
 
-#define C_AMP	CHR(38)
-	
-		IF PCOUNT() = 2 AND m.tlCData
-			m.lcString = "<![CDATA[" + STRTRAN(m.tcString,"]]>","]]>]]&gt;<![CDATA[") + "]]>"
+		IF PCOUNT() = 2 AND m.CData
+			m.Encoded = "<![CDATA[" + STRTRAN(m.Source,"]]>","]]]]>&" + "gt;<![CDATA[") + "]]>"
 		ELSE
-			m.lcString = STRTRAN(STRTRAN(STRTRAN(STRTRAN(STRTRAN(m.tcString,C_AMP,C_AMP + "amp;"),"'",C_AMP + "apos;"),'"',C_AMP + "quot;"),">",C_AMP + "gt;"),"<",C_AMP + "lt;")
+			m.Encoded = STRTRAN(STRTRAN(STRTRAN(STRTRAN(STRTRAN(m.Source,"&","&" + "amp;"),"'","&" + "apos;"),'"',"&" + "quot;"),">","&" + "gt;"),"<","&" + "lt;")
 		ENDIF
 		
-		RETURN m.lcString
+		RETURN m.Encoded
 	ENDFUNC
 	
 ENDDEFINE

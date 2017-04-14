@@ -74,7 +74,7 @@
 *				? m.Serializer.GetText(m.VFP.doc.child[2].xmlattributes.order)
 *			would return
 *				b
-*			(note that order becomes _order, because order is not allowed as a VFP property name)
+*			(note that order may become _order, if an array, because order is not allowed as a VFP property name)
 *
 *	m.Count = m.XMLSerializer.GetArrayLength (VFPObject.property)
 *		Retrieves the number of elements in a serialized array, or 0 if the property does not hold an array.
