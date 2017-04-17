@@ -127,6 +127,8 @@ ENDIF
 #DEFINE XML_NFATTR		"_attr_"
 #DEFINE XML_NFTEXT		"_nodetext_"
 
+#DEFINE SAFETHIS			ASSERT !USED("This") AND TYPE("This") == "O"
+
 DEFINE CLASS XMLSerializer AS Custom
 
 	ADD OBJECT DomainNamer AS Namer
@@ -161,6 +163,8 @@ DEFINE CLASS XMLSerializer AS Custom
 	
 	FUNCTION Init
 	
+		SAFETHIS
+
 		* load now the namer library, if not already loaded
 		DO (LOCFILE("NAMER.PRG"))
 
@@ -186,6 +190,10 @@ DEFINE CLASS XMLSerializer AS Custom
 	***************************************************************************************************
 	FUNCTION XMLtoVFP AS Empty
 	LPARAMETERS Source AS StringURLorDOM
+
+		SAFETHIS
+
+		ASSERT TYPE("m.Source") $ "CO" MESSAGE "Source must be a string or an object."
 
 		LOCAL VFPObject AS Empty
 		LOCAL SourceObject AS MSXML2.IXMLDOMNode
@@ -239,6 +247,11 @@ DEFINE CLASS XMLSerializer AS Custom
 	***************************************************************************************************
 	FUNCTION VFPtoXML AS MSXML2.DOMDocument60
 	LPARAMETERS Source AS anyVFPObject, Root AS String
+
+		SAFETHIS
+
+		ASSERT TYPE("m.Source") = "O" MESSAGE "Source must be an object."
+		ASSERT PCOUNT() = 1 OR TYPE("m.Root") = "C" MESSAGE "Root name must be a string."
 
 		LOCAL XMLObject AS MSXML2.DOMDocument60
 		LOCAL Namespaces AS Collection
@@ -306,6 +319,8 @@ DEFINE CLASS XMLSerializer AS Custom
 	FUNCTION GetText
 	LPARAMETERS Element
 
+		ASSERT TYPE("m.Element") = "O" MESSAGE "Element must be an object."
+
 		LOCAL ElementText AS String
 		LOCAL LoopIndex AS Integer
 
@@ -338,6 +353,8 @@ DEFINE CLASS XMLSerializer AS Custom
 	***************************************************************************************************
 	FUNCTION GetArrayLength
 	LPARAMETERS Element
+
+		ASSERT TYPE("m.Element") = "O" MESSAGE "Element must be an object."
 
 		LOCAL ArrayLength AS Integer
 
@@ -374,6 +391,11 @@ DEFINE CLASS XMLSerializer AS Custom
 	***************************************************************************************************
 	FUNCTION GetSimpleCopy
 	LPARAMETERS Element, Options AS Integer
+
+		SAFETHIS
+
+		ASSERT TYPE("m.Element") = "O" MESSAGE "Element must be an object."
+		ASSERT TYPE("m.Options") $ "LN" MESSAGE "Options must be logical or a number."
 
 		* the segment of the simple copy created at this level
 		LOCAL SimpleCopy AS Empty
@@ -534,6 +556,8 @@ DEFINE CLASS XMLSerializer AS Custom
 	* VFPObject - the VFP object that is being built
 	HIDDEN FUNCTION ReadXMLTree
 	LPARAMETERS XMLNodes AS MSXML2.IXMLDOMNodeList, VFPObject AS Object
+
+		SAFETHIS
 
 		* to traverse the XML document tree
 		LOCAL Node AS MSXML2.IXMLDOMNode
@@ -798,6 +822,8 @@ DEFINE CLASS XMLSerializer AS Custom
 		ObjNode AS MSXML2.IXMLDOMNode, ObjDocument AS MSXML2.DOMDocument60, ;
 		AttributeLevel AS Integer, ParentNamespace AS String, Namespaces AS Collection
 
+		SAFETHIS
+
 		* the XML element that matches the VFP property
 		LOCAL Element AS MSXML2.IXMLDOMElement
 
@@ -906,7 +932,7 @@ DEFINE CLASS XMLSerializer AS Custom
 					* if it is an array, process every element
 					IF TYPE(m.ChildReference, 1) = "A"
 
-						FOR m.ArrayLoop = 1 TO ALEN(&ChildReference)
+						FOR m.ArrayLoop = 1 TO ALEN(&ChildReference.)
 
 							m.ChildElementReference = m.ChildReference + "[" + TRANSFORM(m.ArrayLoop) + "]"
 							* if there is an original position, store it in the position collection to be properly sorted
@@ -956,7 +982,7 @@ DEFINE CLASS XMLSerializer AS Custom
 
 		ENDIF
 		
-		* sort the positions collection
+		* sort the positions collection by key, and iterate trough the items
 		m.Positions.KeySort = 2
 
 		FOR EACH m.ChildReference IN m.Positions
