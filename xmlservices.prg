@@ -1,5 +1,5 @@
 * install itself
-IF !"\XMLSERVICE.FXP" $ SET("Procedure")
+IF !SYS(16) $ SET("Procedure")
 	SET PROCEDURE TO SYS(16) ADDITIVE
 ENDIF
 

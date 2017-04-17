@@ -99,12 +99,10 @@
 *
 
 * dependency on Namer class
-IF !("\NAMER.FXP") $ SET("Procedure")
-	SET PROCEDURE TO (LOCFILE("NAMER.PRG")) ADDITIVE
-ENDIF
+DO (LOCFILE("NAMER.PRG"))
 
 * install itself
-IF !("\XML-SERIALIZER.FXP") $ SET("Procedure")
+IF !SYS(16) $ SET("Procedure")
 	SET PROCEDURE TO (SYS(16)) ADDITIVE
 ENDIF
 
@@ -133,6 +131,17 @@ DEFINE CLASS XMLSerializer AS Custom
 
 	ADD OBJECT DomainNamer AS Namer
 
+	_memberdata = '<VFPData>' + ;
+						'<memberdata name="xmltovfp" type="method" display="XMLtoVFP"/>' + ;
+						'<memberdata name="vfptoxml" type="method" display="VFPtoXML"/>' + ;
+						'<memberdata name="gettext" type="method" display="GetText"/>' + ;
+						'<memberdata name="getsimplecopy" type="method" display="GeSimpleCopy"/>' + ;
+						'<memberdata name="getarraylength" type="method" display="GetArrayLength"/>' + ;
+						'<memberdata name="domainnamer" type="property" display="DomainNamer"/>' + ;
+						'<memberdata name="xmlerror" type="property" display="XMLError"/>' + ;
+						'<memberdata name="xmlline" type="property" display="XMLLine"/>' + ;
+						'</VFPData>'
+
 	XMLError = ""
 	XMLLine = 0
 
@@ -153,9 +162,7 @@ DEFINE CLASS XMLSerializer AS Custom
 	FUNCTION Init
 	
 		* load now the namer library, if not already loaded
-		IF !("\NAMER.FXP") $ SET("Procedure")
-			SET PROCEDURE TO (LOCFILE("NAMER.PRG")) ADDITIVE
-		ENDIF
+		DO (LOCFILE("NAMER.PRG"))
 
 		* set the name translators for VFP and XML
 		This.DomainNamer.AttachProcessor("VFPNamer", LOCFILE("vfp-names.prg"))
