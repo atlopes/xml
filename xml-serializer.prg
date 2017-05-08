@@ -106,10 +106,14 @@ IF !SYS(16) $ SET("Procedure")
 	SET PROCEDURE TO (SYS(16)) ADDITIVE
 ENDIF
 
+#INCLUDE "XML-Serializer.h"
+
+* sorter formats and strings, to rearrange nodes positions in a re-serialized XML document
 #DEFINE SORTFORMAT		"@L 9999999999"
 #DEFINE SORTNOTSET		"UNSET"
 #DEFINE SUBSORTNOTSET	REPLICATE("0",10)
 
+* XML properties of an XML to VFP node
 #DEFINE XML_NAME			This.XMLProperties[1]
 #DEFINE XML_TEXT			This.XMLProperties[2]
 #DEFINE XML_NAMESPACE	This.XMLProperties[3]
@@ -118,20 +122,44 @@ ENDIF
 #DEFINE XML_COUNT			This.XMLProperties[6]
 #DEFINE XML_ATTRIBUTE	This.XMLProperties[7]
 
+* processed XML nodes as VFP nodes, other than elements (always arrayed)
+#DEFINE XML_PI				"xmlprocessinginstruction"
+#DEFINE XML_COMMENT		"xmlcomment"
+#DEFINE XML_ORPHANTEXT	"xmltext"
+
+* processing level when serializing from VFP to XML
+#DEFINE VFP_DOCUMENT				-1
+#DEFINE VFP_ELEMENT				0
+#DEFINE VFP_SINGLEATTRIBUTE	1
+#DEFINE VFP_ATTRIBUTES			2
+
+* type of node identifier
 #DEFINE XML_ISTEXT		This.DataTypes[1]
 #DEFINE XML_ISCDATA		This.DataTypes[2]
 #DEFINE XML_ISELEMENT	This.DataTypes[3]
+#DEFINE XML_ISPI			This.DataTypes[4]
+#DEFINE XML_ISCOMMENT	This.DataTypes[5]
 
+* VFP node names, or part names, for encoding or exporting
 #DEFINE XML_SIMPLEATTR	UPPER(XML_ATTRIBUTE)
 #DEFINE XML_SIMPLETEXT	"_value_"
 #DEFINE XML_NFATTR		"_attr_"
 #DEFINE XML_NFTEXT		"_nodetext_"
+
+* DOM node types
+#DEFINE NODE_ELEMENT				1
+#DEFINE NODE_ATTRIBUTE			2
+#DEFINE NODE_TEXT					3
+#DEFINE NODE_CDATA				4
+#DEFINE NODE_PROCINSTRUCTION	7
+#DEFINE NODE_COMMENT				8
 
 #DEFINE SAFETHIS			ASSERT !USED("This") AND TYPE("This") == "O"
 
 DEFINE CLASS XMLSerializer AS Custom
 
 	ADD OBJECT DomainNamer AS Namer
+	ADD OBJECT Options AS Collection
 
 	_memberdata = '<VFPData>' + ;
 						'<memberdata name="xmltovfp" type="method" display="XMLtoVFP"/>' + ;
@@ -139,19 +167,24 @@ DEFINE CLASS XMLSerializer AS Custom
 						'<memberdata name="gettext" type="method" display="GetText"/>' + ;
 						'<memberdata name="getsimplecopy" type="method" display="GeSimpleCopy"/>' + ;
 						'<memberdata name="getarraylength" type="method" display="GetArrayLength"/>' + ;
+						'<memberdata name="setoption" type="method" display="SetOption"/>' + ;
+						'<memberdata name="getoption" type="method" display="GetOption"/>' + ;
 						'<memberdata name="domainnamer" type="property" display="DomainNamer"/>' + ;
+						'<memberdata name="options" type="property" display="Options"/>' + ;
 						'<memberdata name="xmlerror" type="property" display="XMLError"/>' + ;
 						'<memberdata name="xmlline" type="property" display="XMLLine"/>' + ;
 						'</VFPData>'
 
 	XMLError = ""
 	XMLLine = 0
-
+	
 	Parser = .NULL.
-	DIMENSION DataTypes[3]
+	DIMENSION DataTypes[5]
 	DataTypes[1] = "t"
 	DataTypes[2] = "c"
 	DataTypes[3] = "e"
+	DataTypes[4] = "p"
+	DataTypes[5] = "*"
 	DIMENSION XMLProperties[7]
 	XMLProperties[1] = "xmlname"
 	XMLProperties[2] = "xmltext"
@@ -175,8 +208,61 @@ DEFINE CLASS XMLSerializer AS Custom
 		* this is the XML parser (serialized XML DOM objects are created when needed)
 		This.Parser = CREATEOBJECT("MSXML2.DOMDocument.6.0")
 		This.Parser.Async = .F.
-		
+
+		This.SetOption(XMLSERIAL_WHITESPACE, .F.)
+		This.SetOption(XMLSERIAL_PROCESSINGINSTRUCTIONS, .F.)
+		This.SetOption(XMLSERIAL_COMMENTS, .F.)
+
 		RETURN .T.
+
+	ENDFUNC
+
+	***************************************************************************************************
+	* SetOption
+	
+	* Sets an option
+	***************************************************************************************************
+	FUNCTION SetOption (Option AS String, OptionValue AS AnyType)
+
+		SAFETHIS
+
+		LOCAL OptionKey AS String
+
+		IF m.Option == XMLSERIAL_WHITESPACE OR ;
+				m.Option == XMLSERIAL_PROCESSINGINSTRUCTIONS OR ;
+				m.Option == XMLSERIAL_COMMENTS
+
+			m.OptionKey = UPPER(m.Option)
+
+			IF !EMPTY(This.Options.GetKey(m.OptionKey))
+				This.Options.Remove(m.OptionKey)
+			ENDIF
+
+			This.Options.Add(m.OptionValue, m.OptionKey)
+
+		ENDIF
+
+		RETURN m.OptionValue
+
+	ENDFUNC
+
+	***************************************************************************************************
+	* GetOption
+	
+	* Returns an option value
+	***************************************************************************************************
+	FUNCTION GetOption (Option AS String)
+
+		SAFETHIS
+
+		IF m.Option == XMLSERIAL_WHITESPACE OR ;
+				m.Option == XMLSERIAL_PROCESSINGINSTRUCTIONS OR ;
+				m.Option == XMLSERIAL_COMMENTS
+
+			RETURN This.Options.Item(UPPER(m.Option))
+		ENDIF
+
+		RETURN .NULL.
 
 	ENDFUNC
 
@@ -207,6 +293,10 @@ DEFINE CLASS XMLSerializer AS Custom
 			m.SourceObject = m.Source
 
 		ELSE
+
+			* follow white space setting
+			This.Parser.preserveWhiteSpace = This.GetOption(XMLSERIAL_WHITESPACE)
+
 			* otherwise, a source document has to be loaded
 			* try to load as an URL / file
 			IF !This.Parser.Load(m.Source)
@@ -260,6 +350,11 @@ DEFINE CLASS XMLSerializer AS Custom
 		LOCAL LoopIndex AS String
 
 		LOCAL ARRAY Properties[1]
+		LOCAL RootProperty AS Integer
+		LOCAL PropertyCount AS Integer
+		LOCAL PropertiesIndex AS Integer
+
+		LOCAL ExactSetting AS String
 
 		DO CASE
 
@@ -268,12 +363,39 @@ DEFINE CLASS XMLSerializer AS Custom
 			RETURN .NULL.
 			
 		CASE PCOUNT() = 1
+
+			m.ExactSetting = SET("Exact")
+			SET EXACT ON
+
 			* there must be a single root at the top of the object property tree
-			IF AMEMBERS(m.Properties, m.Source, 0, "U") != 1 ;
-					OR TYPE("m.Source." + m.Properties[1], 1) == "A" ;
-					OR TYPE("m.Source." + m.Properties[1]) == "U"
+			m.RootProperty = 0
+
+			* look for the root (ignoring sibling processing instructions, and comments)
+			PropertyCount = AMEMBERS(m.Properties, m.Source, 0, "U")
+			FOR m.PropertiesIndex = 1 TO m.PropertyCount
+				IF !INLIST(LOWER(m.Properties[m.PropertiesIndex]) , XML_PI, XML_COMMENT, XML_ORPHANTEXT)
+					* give up if there is more than one
+					IF m.RootProperty != 0
+						m.RootProperty = 0
+						EXIT
+					ENDIF
+					m.RootProperty = m.PropertiesIndex
+				ENDIF
+			ENDFOR
+
+			IF m.ExactSetting == "OFF"
+				SET EXACT OFF
+			ENDIF
+
+			* give up if a root was not found, or it is an array, or it is undefined
+			IF m.RootProperty = 0 ;
+					OR TYPE("m.Source." + m.Properties[m.RootProperty], 1) == "A" ;
+					OR TYPE("m.Source." + m.Properties[m.RootProperty]) == "U"
 				RETURN .NULL.
 			ENDIF
+
+		OTHERWISE
+			m.PropertyCount = 1
 
 		ENDCASE
 
@@ -282,17 +404,26 @@ DEFINE CLASS XMLSerializer AS Custom
 		m.XMLDeclaration = m.XMLObject.createProcessingInstruction("xml", 'version="1.0" encoding="UTF-8"')
 		m.XMLObject.appendChild(m.XMLDeclaration)
 
-		m.XMLObject.preserveWhiteSpace = .T.
+		m.XMLObject.preserveWhiteSpace = This.GetOption(XMLSERIAL_WHITESPACE)
 
 		* the collection of the namespaces in use
 		m.Namespaces = CREATEOBJECT("Collection")
 
 		* process the VFP object tree, starting from top property or from the object itself
-		IF PCOUNT() = 1
-			This.ReadVFPTree(m.Properties[1], EVALUATE("m.Source." + m.Properties[1]), m.XMLObject, m.XMLObject, 0, "", m.Namespaces)
-		ELSE
-			This.ReadVFPTree(m.Root, m.Source, m.XMLObject, m.XMLObject, 0, "", m.Namespaces)
-		ENDIF
+		DO CASE
+		CASE PCOUNT() = 1 AND m.PropertyCount = 1
+			* a simple case where there is a single property at the top
+			This.ReadVFPTree(m.Properties[1], EVALUATE("m.Source." + m.Properties[1]), m.XMLObject, m.XMLObject, VFP_ELEMENT, "", m.Namespaces)
+
+		CASE m.PropertyCount > 1
+			* when there are several properties, with one identified root, process from the document level
+			This.ReadVFPTree("", m.Source, m.XMLObject, m.XMLObject, VFP_DOCUMENT, "", m.Namespaces)
+
+		OTHERWISE
+			* the root is named, and identified, process from there
+			This.ReadVFPTree(m.Root, m.Source, m.XMLObject, m.XMLObject, VFP_ELEMENT, "", m.Namespaces)
+
+		ENDCASE
 
 		* after the XML object is built, move the namespaces declarations to the root element to reduce verbosity
 		FOR m.LoopIndex = 1 TO m.Namespaces.Count
@@ -453,7 +584,7 @@ DEFINE CLASS XMLSerializer AS Custom
 						* create a reference to it
 						m.ArrayProperty = m.Property + "[" + TRANSFORM(m.LoopArrayIndex) + "]"
 						* fetch the simplified text value
-						m.TextValue = This.GetText(m.Element.&ArrayProperty.)
+						m.TextValue = EVL(This.GetText(m.Element.&ArrayProperty.), "")
 						* and create the simplified version of the tree under it (if there is one)
 						m.DownTree = This.GetSimpleCopy(m.Element.&ArrayProperty., m.Options)
 						
@@ -587,7 +718,19 @@ DEFINE CLASS XMLSerializer AS Custom
 		LOCAL ToArray AS Boolean
 		LOCAL TempValue AS Empty
 
+		* read processing instructions?
+		LOCAL ReadProcessingInstructions AS Boolean
+		LOCAL ProcessingInstructions AS Integer
+		* read comments?
+		LOCAL ReadComments AS Boolean
+		LOCAL Comments AS Integer
+
 		m.NodeIndex = 0
+
+		m.ReadProcessingInstructions = This.GetOption(XMLSERIAL_PROCESSINGINSTRUCTIONS)
+		m.ReadComments = This.GetOption(XMLSERIAL_COMMENTS)
+
+		STORE 0 TO m.ProcessingInstructions, m.Comments
 
 		* traverse every node in the list
 		FOR EACH m.Node IN m.XMLNodes
@@ -597,13 +740,10 @@ DEFINE CLASS XMLSerializer AS Custom
 
 			WITH m.Node
 			
-				* it is not an element or an attribute? check the next node
-				IF .nodeType != 1 AND .nodeType != 2
-					LOOP
-				ENDIF
+				* process a node
+				DO CASE
 
-				* process an element
-				IF .nodeType = 1
+				CASE .nodeType = NODE_ELEMENT				&& found an element
 				
 					* fetch all namespace prefixes
 					m.Prefixes = .NULL.
@@ -640,13 +780,13 @@ DEFINE CLASS XMLSerializer AS Custom
 						m.TextNodeIndex = m.TextNodeIndex + 1
 
 						* if a text or CDATA child was found
-						IF INLIST(m.TextNode.nodeType, 3, 4)
+						IF INLIST(m.TextNode.nodeType, NODE_TEXT, NODE_CDATA)
 						
 							* insert it in the texts collection, with its position marked
 							IF ISNULL(m.Texts)
 								m.Texts = CREATEOBJECT("Collection")
 							ENDIF
-							m.Texts.Add(m.TextNode.text, This.DataTypes[m.TextNode.nodeType - 2] + TRANSFORM(m.TextNodeIndex))
+							m.Texts.Add(m.TextNode.text, IIF(m.TextNode.nodeType = NODE_TEXT, XML_ISTEXT, XML_ISCDATA) + TRANSFORM(m.TextNodeIndex))
 
 						ENDIF
 					ENDFOR
@@ -654,7 +794,7 @@ DEFINE CLASS XMLSerializer AS Custom
 					* fetch the namespace for the current node
 					m.NameSpace = .namespaceURI
 				
-				ELSE
+				CASE .nodeType = NODE_ATTRIBUTE		&& found an attribute
 				
 					* attributes do not have attributes
 					m.HasAttributes = .F.
@@ -663,10 +803,23 @@ DEFINE CLASS XMLSerializer AS Custom
 					m.Texts = CREATEOBJECT("Collection")
 					m.Texts.Add(.text, XML_ISTEXT + "1")
 
-					* and a namespace
+					* attributes may have a namespace
 					m.NameSpace = EVL(.namespaceURI, .NULL.)
-				
-				ENDIF
+
+
+				CASE .nodeType = NODE_PROCINSTRUCTION AND m.ReadProcessingInstructions
+					m.ProcessingInstructions = This._newProcessingInstruction(m.VFPObject, .nodeName, .nodeValue, m.ProcessingInstructions, m.NodeIndex)
+					LOOP
+
+				CASE .nodeType = NODE_COMMENT AND m.ReadComments
+					m.Comments = This._newComment(m.VFPObject, .nodeValue, m.Comments, m.NodeIndex)
+					LOOP
+
+				OTHERWISE			&& for all other cases ignore the XML source
+
+					LOOP
+
+				ENDCASE
 
 				* try to treat the node as a single property
 				m.ToArray = .F.
@@ -685,12 +838,7 @@ DEFINE CLASS XMLSerializer AS Custom
 				*		- the namespace
 				*		- the prefixes
 				* 		- and its position, in the tree
-				m.NewValue = CREATEOBJECT("Empty")
-				ADDPROPERTY(m.NewValue, XML_NAME, .baseName)
-				ADDPROPERTY(m.NewValue, XML_TEXT, m.Texts)
-				ADDPROPERTY(m.NewValue, XML_NAMESPACE, m.NameSpace)
-				ADDPROPERTY(m.NewValue, XML_PREFIXES, m.Prefixes)
-				ADDPROPERTY(m.NewValue, XML_POSITION, m.NodeIndex)
+				m.NewValue = This._newVFPNode(.baseName, m.Texts, m.NameSpace, m.Prefixes, m.NodeIndex)
 				
 				* an element or attribute with this name did not exist
 				IF m.NewNode
@@ -776,7 +924,7 @@ DEFINE CLASS XMLSerializer AS Custom
 					DIMENSION m.VFPObject.&NewName.
 					* set its value
 					m.VFPObject.&NewName. = m.NewValue
-					* and proceed to its subtree
+					* and proceed, later on, to its subtree
 					m.NodeVFPRoot = EVALUATE("m.VFPObject." + m.NewName)
 					
 				ENDIF
@@ -813,23 +961,24 @@ DEFINE CLASS XMLSerializer AS Custom
 	* ObjSource - a point in the VFP object hierarchy
 	* ObjNode - the parent of the element, in the XML tree
 	* ObjDocument - the general XML document that is being built
-	* AttributeLevel - while dealing with a collection (1) of attributes (2) or not (0)
+	* ProcessingLevel - what is being processed at this level
 	* ParentNamespace - the namespace of the parent element
 	* Namespaces - the collection of namespaces referred so far
-
 	FUNCTION ReadVFPTree
 	LPARAMETERS ObjSourceName AS String, ObjSource AS anyVFPObject, ;
 		ObjNode AS MSXML2.IXMLDOMNode, ObjDocument AS MSXML2.DOMDocument60, ;
-		AttributeLevel AS Integer, ParentNamespace AS String, Namespaces AS Collection
+		ProcessingLevel AS Integer, ParentNamespace AS String, Namespaces AS Collection
 
 		SAFETHIS
 
 		* the XML element that matches the VFP property
 		LOCAL Element AS MSXML2.IXMLDOMElement
 
-		* text and CDATA nodes
+		* text, CDATA, PI and comment nodes
 		LOCAL TextNode AS MSXML2.IXMLDOMText
 		LOCAL CDATANode AS MSXML2.IXMLDOMCDATASection
+		LOCAL ProcessingInstructionNode AS MSXML2.IXMLDOMProcessingInstruction
+		LOCAL CommentNode AS MSXML2.IXMLDOMComment
 
 		* the XML object name and namespace (empty, if from an original VFP object)
 		LOCAL ObjectName AS String
@@ -847,13 +996,13 @@ DEFINE CLASS XMLSerializer AS Custom
 		* how a child of this VFP object is referred
 		LOCAL ChildReference AS String
 
-		* types: e - element, t - text, c - cdata (attributes are treated by the AttributeLevel parameter)
+		* types: e - element, t - text, c - cdata, p - processing instruction, # - comments (attributes are treated by the AttributeLevel parameter)
 		LOCAL ChildType AS String
 
 		* child reference when child is an array
 		LOCAL ChildElementReference AS String
 
-		* the original positions of the XML elements, keyed by type (e-t-c) and reference
+		* the original positions of the XML elements, keyed by type (e-t-c-p-#) and reference
 		LOCAL Positions AS Collection
 
 		* the original positions of XML textual nodes (text and CDATA)
@@ -864,12 +1013,19 @@ DEFINE CLASS XMLSerializer AS Custom
 		LOCAL ArrayLoop AS Integer
 		LOCAL TextLoop AS Integer
 
+		* options settings
+		LOCAL WriteProcessingInstructions AS Boolean
+		LOCAL WriteComments AS Boolean
+
+		m.WriteProcessingInstructions = This.GetOption(XMLSERIAL_PROCESSINGINSTRUCTIONS)
+		m.WriteComments = This.GetOption(XMLSERIAL_COMMENTS)
+
 		* no namespace in use
 		m.ObjectNamespace = ""
 		m.QualifyName = .F.
 
-		* if not processing an xmlattributes VFP object...
-		IF m.AttributeLevel != 1
+		* if processing a single element or attribute, prepare a DOM object to match
+		IF INLIST(m.ProcessingLevel, VFP_ELEMENT, VFP_SINGLEATTRIBUTE)
 
 			* if there is a namespace associated with a VFP property
 			IF TYPE("m.ObjSource.xmlns") == "C"
@@ -907,50 +1063,51 @@ DEFINE CLASS XMLSerializer AS Custom
 
 			* create an XML node in the DOM to hold all information
 			DO CASE
-			CASE m.AttributeLevel = 0
+			CASE m.ProcessingLevel = VFP_ELEMENT
 				* a regular element
-				m.Element = m.ObjDocument.createNode(1, m.ObjectName, IIF(m.QualifyName, m.ObjectNamespace, ""))
-			CASE m.AttributeLevel = 2
+				m.Element = m.ObjDocument.createNode(NODE_ELEMENT, m.ObjectName, IIF(m.QualifyName, m.ObjectNamespace, ""))
+			CASE m.ProcessingLevel = VFP_SINGLEATTRIBUTE
 				* or an attribute
-				m.Element = m.ObjDocument.createNode(2, m.ObjectName, IIF(m.QualifyName, m.ObjectNamespace, ""))
+				m.Element = m.ObjDocument.createNode(NODE_ATTRIBUTE, m.ObjectName, IIF(m.QualifyName, m.ObjectNamespace, ""))
 			ENDCASE
 		ENDIF
 		
-		* collection that will sort all elements back to their original XML order or to the natural VFP order
+		* collection that will filter and sort all elements back to their original XML order or to the natural VFP order
 		m.Positions = CREATEOBJECT("Collection")
 
 		* the children of the current VFP object / property
-		IF TYPE("m.ObjSource") = "O" AND AMEMBERS(m.Properties, m.ObjSource, 0, "U") != 0
+		IF TYPE("m.ObjSource") == "O" AND !ISNULL(m.ObjSource) AND AMEMBERS(m.Properties, m.ObjSource, 0, "U") != 0
 
-			* will all be processed	
+			* will be processed	
 			FOR m.Loop = 1 TO ALEN(m.Properties)
 
 				* but disregard the XML* properties and other members which are not value properties
-				IF LEFT(m.Properties[m.Loop], 3) != "XML" AND TYPE("m.ObjSource." + m.Properties[m.Loop]) != "U"
+				IF (LEFT(m.Properties[m.Loop], 3) != "XML" OR ;
+							m.Properties[m.Loop] == UPPER(XML_PI) OR ;
+							m.Properties[m.Loop] == UPPER(XML_COMMENT)) ;
+						AND TYPE("m.ObjSource." + m.Properties[m.Loop]) != "U"
+
+					DO CASE
+					CASE m.Properties[m.Loop] == UPPER(XML_PI)
+						m.ChildType = XML_ISPI
+					CASE m.Properties[m.Loop] == UPPER(XML_COMMENT)
+						m.ChildType = XML_ISCOMMENT
+					OTHERWISE
+						m.ChildType = XML_ISELEMENT
+					ENDCASE
 
 					m.ChildReference = "m.ObjSource." + m.Properties[m.Loop]
-					* if it is an array, process every element
+
 					IF TYPE(m.ChildReference, 1) = "A"
 
+						* if it is an array, process every element
 						FOR m.ArrayLoop = 1 TO ALEN(&ChildReference.)
-
 							m.ChildElementReference = m.ChildReference + "[" + TRANSFORM(m.ArrayLoop) + "]"
-							* if there is an original position, store it in the position collection to be properly sorted
-							IF TYPE(m.ChildElementReference + ".xmlposition") = "N"
-								m.Positions.Add(XML_ISELEMENT + m.ChildElementReference, TRANSFORM(EVALUATE(m.ChildElementReference + ".xmlposition"), SORTFORMAT))
-							ELSE
-								* if not, move them to the bottom
-								m.Positions.Add(XML_ISELEMENT + m.ChildElementReference, SORTNOTSET + TRANSFORM(m.Loop, SORTFORMAT) + TRANSFORM(m.ArrayLoop, SORTFORMAT))
-							ENDIF
+							This._prepareVFPNodeToXML(m.ObjSource, m.Positions, m.ChildType, m.ChildElementReference, SORTNOTSET + TRANSFORM(m.Loop, SORTFORMAT) + TRANSFORM(m.ArrayLoop, SORTFORMAT))
 						ENDFOR
 					ELSE
-					
 						* do the same for single objects that are not part of arrays
-						IF TYPE(m.ChildReference + ".xmlposition") = "N"
-							m.Positions.Add(XML_ISELEMENT + m.ChildReference, TRANSFORM(EVALUATE(m.ChildReference+ ".xmlposition"), SORTFORMAT))
-						ELSE
-							m.Positions.Add(XML_ISELEMENT + m.ChildReference, SORTNOTSET + TRANSFORM(m.Loop, SORTFORMAT) + SUBSORTNOTSET)
-						ENDIF
+						This._prepareVFPNodeToXML(m.ObjSource, m.Positions, m.ChildType, m.ChildReference, SORTNOTSET + TRANSFORM(m.Loop, SORTFORMAT) + SUBSORTNOTSET)
 					ENDIF
 				ENDIF
 			ENDFOR
@@ -969,9 +1126,9 @@ DEFINE CLASS XMLSerializer AS Custom
 			ENDIF
 
 			* process the attributes for the element, if any
-			IF m.AttributeLevel = 0 AND TYPE("m.ObjSource.xmlattributes") = "O" AND !ISNULL(m.ObjSource.xmlattributes)
+			IF m.ProcessingLevel = VFP_ELEMENT AND TYPE("m.ObjSource.xmlattributes") = "O" AND !ISNULL(m.ObjSource.xmlattributes)
 
-				This.ReadVFPTree("", m.ObjSource.xmlattributes, m.Element, m.ObjDocument, 1, m.ObjectNamespace, m.Namespaces)
+				This.ReadVFPTree("", m.ObjSource.xmlattributes, m.Element, m.ObjDocument, VFP_ATTRIBUTES, m.ObjectNamespace, m.Namespaces)
 
 			ENDIF
 
@@ -981,7 +1138,7 @@ DEFINE CLASS XMLSerializer AS Custom
 			m.Positions.Add(XML_ISCDATA + "m.ObjSource", SORTNOTSET)
 
 		ENDIF
-		
+
 		* sort the positions collection by key, and iterate trough the items
 		m.Positions.KeySort = 2
 
@@ -998,29 +1155,58 @@ DEFINE CLASS XMLSerializer AS Custom
 			m.ObjectName = SUBSTR(m.ObjectName, RAT(".", m.ObjectName) + 1)
 			
 			DO CASE
-			CASE m.AttributeLevel = 1
+			CASE m.ProcessingLevel = VFP_ATTRIBUTES
 				* if processing a collection of .xmlattributes, process the VFP hierarchy
-				This.ReadVFPTree("", EVALUATE(m.ChildReference), m.ObjNode, m.ObjDocument, 2, m.ObjectNamespace, m.Namespaces)
+				This.ReadVFPTree("", EVALUATE(m.ChildReference), m.ObjNode, m.ObjDocument, VFP_SINGLEATTRIBUTE, m.ObjectNamespace, m.Namespaces)
 			
-			CASE m.AttributeLevel = 2
+			CASE m.ProcessingLevel = VFP_SINGLEATTRIBUTE
 				* if processing a single attribute, prepare its value to be inserted
 				m.Element.text = TRANSFORM(NVL(EVALUATE(m.ChildReference),""))
 
 			CASE m.ChildType == XML_ISELEMENT
 				* go deeper in the element processing
-				This.ReadVFPTree(m.ObjectName, EVALUATE(m.ChildReference), m.Element, m.ObjDocument, 0, m.ObjectNamespace, m.Namespaces)
-			
+				IF m.ProcessingLevel = VFP_DOCUMENT
+					This.ReadVFPTree(m.ObjectName, EVALUATE(m.ChildReference), m.ObjDocument, m.ObjDocument, VFP_ELEMENT, m.ObjectNamespace, m.Namespaces)
+				ELSE
+					This.ReadVFPTree(m.ObjectName, EVALUATE(m.ChildReference), m.Element, m.ObjDocument, VFP_ELEMENT, m.ObjectNamespace, m.Namespaces)
+				ENDIF
+
 			CASE m.ChildType == XML_ISTEXT
 				* store a text node
-				m.TextNode = m.ObjDocument.createNode(3, "", "")
+				m.TextNode = m.ObjDocument.createNode(NODE_TEXT, "", "")
 				m.TextNode.text = TRANSFORM(NVL(EVALUATE(m.ChildReference),""))
-				m.Element.appendChild(m.TextNode)
+				IF m.ProcessingLevel = VFP_DOCUMENT
+					m.ObjDocument.appendChild(m.TextNode)
+				ELSE
+					m.Element.appendChild(m.TextNode)
+				ENDIF
 
 			CASE m.ChildType == XML_ISCDATA
 				* store a CDATA node
-				m.CDATANode = m.ObjDocument.createNode(4, "", "")
+				m.CDATANode = m.ObjDocument.createNode(NODE_CDATA, "", "")
 				m.CDATANode.text = TRANSFORM(NVL(EVALUATE(m.ChildReference),""))
 				m.Element.appendChild(m.CDATANode)
+
+			CASE m.ChildType == XML_ISPI AND m.WriteProcessingInstructions
+				* store a processing instruction node
+				m.ObjectName = EVALUATE(m.ChildReference + ".xmlname")
+				IF !m.ObjectName == "xml"
+					m.ProcessingInstructionNode = m.ObjDocument.createProcessingInstruction(m.ObjectName, EVALUATE(m.ChildReference + ".xmltext.item(1)"))
+					IF m.ProcessingLevel = VFP_DOCUMENT
+						m.ObjDocument.appendChild(m.ProcessingInstructionNode)
+					ELSE
+						m.Element.appendChild(m.ProcessingInstructionNode)
+					ENDIF
+				ENDIF
+
+			CASE m.ChildType == XML_ISCOMMENT AND m.WriteComments
+				* store a comment node
+				m.CommentNode = m.ObjDocument.createComment(EVALUATE(m.ChildReference + ".xmltext.item(1)"))
+				IF m.ProcessingLevel = VFP_DOCUMENT
+					m.ObjDocument.appendChild(m.CommentNode)
+				ELSE
+					m.Element.appendChild(m.CommentNode)
+				ENDIF
 
 			ENDCASE
 
@@ -1028,11 +1214,106 @@ DEFINE CLASS XMLSerializer AS Custom
 		
 		* the built node can now be appended (as an element or as an attribute) to the current node of the document tree
 		DO CASE
-		CASE m.AttributeLevel = 0
+		CASE m.ProcessingLevel = VFP_ELEMENT
+
 			m.ObjNode.appendChild(m.Element)
-		CASE m.AttributeLevel = 2
+
+		CASE m.ProcessingLevel = VFP_SINGLEATTRIBUTE
+
 			m.ObjNode.attributes.setNamedItem(m.Element)
+
 		ENDCASE
+
+	ENDFUNC
+
+	* _newVFPNode()
+	* creates a new VFP Node
+	HIDDEN FUNCTION _newVFPNode (Name AS String, Texts AS Collection, Namespace AS String, Prefixes AS Collection, Position AS Integer) AS Empty
+
+		LOCAL NewVFPNode AS Empty
+		
+		m.NewVFPNode = CREATEOBJECT("Empty")
+		ADDPROPERTY(m.NewVFPNode, XML_NAME, m.Name)
+		ADDPROPERTY(m.NewVFPNode, XML_TEXT, m.Texts)
+		ADDPROPERTY(m.NewVFPNode, XML_NAMESPACE, m.NameSpace)
+		ADDPROPERTY(m.NewVFPNode, XML_PREFIXES, m.Prefixes)
+		ADDPROPERTY(m.NewVFPNode, XML_POSITION, m.Position)
+
+		RETURN m.NewVFPNode
+
+	ENDFUNC
+
+	* _newProcessingInstruction
+	* stores a new processing instruction in the VFP object
+	HIDDEN FUNCTION _newProcessingInstruction (VFPObject AS Object, Name AS String, Text AS String, PICount AS Integer, Position AS Integer) AS Integer
+
+		LOCAL NewPI AS Empty
+		LOCAL NewPICount AS Integer
+		LOCAL Texts AS Collection
+		LOCAL ProcessingInstructions AS String
+
+		m.Texts = CREATEOBJECT("Collection")
+		m.Texts.Add(m.Text, XML_ISTEXT + "1")
+
+		m.NewPI = This._newVFPNode(m.Name, m.Texts, .NULL., .NULL., m.Position)
+
+		m.NewPICount = m.PICount + 1
+		m.ProcessingInstructions = XML_PI + "[" + TRANSFORM(m.NewPICount) + "]"
+
+		IF m.NewPICount = 1
+			* no processing instructions yet?
+			ADDPROPERTY(m.VFPObject, m.ProcessingInstructions)
+		ELSE
+			* add to the already existing array, if this was not the first
+			DIMENSION m.VFPObject.&ProcessingInstructions.
+		ENDIF
+
+		m.VFPObject.&ProcessingInstructions. = m.NewPI
+
+		RETURN m.NewPICount
+
+	ENDFUNC
+
+	* _newComment
+	* stores a new comment in the VFP object
+	HIDDEN FUNCTION _newComment (VFPObject AS Object, Text AS String, CommentCount AS Integer, Position AS Integer) AS Integer
+
+		LOCAL NewComment AS Empty
+		LOCAL NewCommentCount AS Integer
+		LOCAL Texts AS Collection
+		LOCAL Comments AS String
+
+		m.Texts = CREATEOBJECT("Collection")
+		m.Texts.Add(m.Text, XML_ISTEXT + "1")
+
+		m.NewComment = This._newVFPNode(.NULL., m.Texts, .NULL., .NULL., m.Position)
+
+		m.NewCommentCount = m.CommentCount + 1
+		m.Comments = XML_COMMENT + "[" + TRANSFORM(m.NewCommentCount) + "]"
+
+		IF m.NewCommentCount = 1
+			* no comments yet?
+			ADDPROPERTY(m.VFPObject, m.Comments)
+		ELSE
+			* add to the already existing array, if this was not the first
+			DIMENSION m.VFPObject.&Comments.
+		ENDIF
+
+		m.VFPObject.&Comments. = m.NewComment
+
+		RETURN m.NewCommentCount
+
+	ENDFUNC
+
+	* _prepareVFPNodeToXML
+	* adds a VFP node to the collection of nodes that will be serialized into XML
+	HIDDEN FUNCTION _prepareVFPNodeToXML (ObjSource AS anyVFPObject, Out AS Collection, TypeOfXMLNode AS Character, NodeReference AS String, NoPosition AS String)
+	
+		IF TYPE(m.NodeReference + ".xmlposition") == "N"
+			m.Out.Add(m.TypeOfXMLNode + m.NodeReference, TRANSFORM(EVALUATE(m.NodeReference + ".xmlposition"), SORTFORMAT))
+		ELSE
+			m.Out.Add(m.TypeOfXMLNode + m.NodeReference, m.NoPosition)
+		ENDIF
 
 	ENDFUNC
 
