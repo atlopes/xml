@@ -125,7 +125,7 @@ ENDIF
 * processed XML nodes as VFP nodes, other than elements (always arrayed)
 #DEFINE XML_PI				"xmlprocessinginstruction"
 #DEFINE XML_COMMENT		"xmlcomment"
-#DEFINE XML_ORPHANTEXT	"xmltext"
+#DEFINE XML_ORPHANTEXT	"xmlorphantext"
 
 * processing level when serializing from VFP to XML
 #DEFINE VFP_DOCUMENT				-1
@@ -159,7 +159,6 @@ ENDIF
 DEFINE CLASS XMLSerializer AS Custom
 
 	ADD OBJECT DomainNamer AS Namer
-	ADD OBJECT Options AS Collection
 
 	_memberdata = '<VFPData>' + ;
 						'<memberdata name="xmltovfp" type="method" display="XMLtoVFP"/>' + ;
@@ -194,6 +193,14 @@ DEFINE CLASS XMLSerializer AS Custom
 	XMLProperties[6] = "xmlcount"
 	XMLProperties[7] = "xmlattributes"
 	
+	HIDDEN _Op_WhiteSpace
+	HIDDEN _Op_ProcessingInstruction
+	HIDDEN _Op_Comment
+
+	_Op_WhiteSpace  =.F.
+	_Op_ProcessingInstruction = .F.
+	_Op_Comment = .F.
+
 	FUNCTION Init
 	
 		SAFETHIS
@@ -209,10 +216,6 @@ DEFINE CLASS XMLSerializer AS Custom
 		This.Parser = CREATEOBJECT("MSXML2.DOMDocument.6.0")
 		This.Parser.Async = .F.
 
-		This.SetOption(XMLSERIAL_WHITESPACE, .F.)
-		This.SetOption(XMLSERIAL_PROCESSINGINSTRUCTIONS, .F.)
-		This.SetOption(XMLSERIAL_COMMENTS, .F.)
-
 		RETURN .T.
 
 	ENDFUNC
@@ -226,23 +229,17 @@ DEFINE CLASS XMLSerializer AS Custom
 
 		SAFETHIS
 
-		LOCAL OptionKey AS String
+		DO CASE
+		CASE m.Option == XMLSERIAL_WHITESPACE
+			This._Op_WhiteSpace = m.OptionValue
 
-		IF m.Option == XMLSERIAL_WHITESPACE OR ;
-				m.Option == XMLSERIAL_PROCESSINGINSTRUCTIONS OR ;
-				m.Option == XMLSERIAL_COMMENTS
+		CASE m.Option == XMLSERIAL_PROCESSINGINSTRUCTIONS
+			This._Op_ProcessingInstruction = m.OptionValue
 
-			m.OptionKey = UPPER(m.Option)
+		CASE m.Option == XMLSERIAL_COMMENTS
+			This._Op_Comment = m.OptionValue
 
-			IF !EMPTY(This.Options.GetKey(m.OptionKey))
-				This.Options.Remove(m.OptionKey)
-			ENDIF
-
-			This.Options.Add(m.OptionValue, m.OptionKey)
-
-		ENDIF
-
-		RETURN m.OptionValue
+		ENDCASE
 
 	ENDFUNC
 
@@ -255,12 +252,17 @@ DEFINE CLASS XMLSerializer AS Custom
 
 		SAFETHIS
 
-		IF m.Option == XMLSERIAL_WHITESPACE OR ;
-				m.Option == XMLSERIAL_PROCESSINGINSTRUCTIONS OR ;
-				m.Option == XMLSERIAL_COMMENTS
+		DO CASE
+		CASE m.Option == XMLSERIAL_WHITESPACE
+			RETURN This._Op_WhiteSpace
 
-			RETURN This.Options.Item(UPPER(m.Option))
-		ENDIF
+		CASE m.Option == XMLSERIAL_PROCESSINGINSTRUCTIONS
+			RETURN This._Op_ProcessingInstruction
+
+		CASE m.Option == XMLSERIAL_COMMENTS
+			RETURN This._Op_Comment
+
+		ENDCASE
 
 		RETURN .NULL.
 
@@ -295,7 +297,7 @@ DEFINE CLASS XMLSerializer AS Custom
 		ELSE
 
 			* follow white space setting
-			This.Parser.preserveWhiteSpace = This.GetOption(XMLSERIAL_WHITESPACE)
+			This.Parser.preserveWhiteSpace = This._Op_WhiteSpace
 
 			* otherwise, a source document has to be loaded
 			* try to load as an URL / file
@@ -315,7 +317,7 @@ DEFINE CLASS XMLSerializer AS Custom
 		IF EMPTY(This.XMLError)
 			m.VFPObject = CREATEOBJECT("Empty")
 			* read the tree and put it in a VFP object
-			This.ReadXMLTree(m.SourceObject.childNodes(), m.VFPObject)
+			This.ReadXMLTree(m.SourceObject.childNodes(), m.VFPObject, .T.)
 		ELSE
 			* report failure
 			m.VFPObject = .NULL.
@@ -404,7 +406,7 @@ DEFINE CLASS XMLSerializer AS Custom
 		m.XMLDeclaration = m.XMLObject.createProcessingInstruction("xml", 'version="1.0" encoding="UTF-8"')
 		m.XMLObject.appendChild(m.XMLDeclaration)
 
-		m.XMLObject.preserveWhiteSpace = This.GetOption(XMLSERIAL_WHITESPACE)
+		m.XMLObject.preserveWhiteSpace = This._Op_WhiteSpace
 
 		* the collection of the namespaces in use
 		m.Namespaces = CREATEOBJECT("Collection")
@@ -686,7 +688,7 @@ DEFINE CLASS XMLSerializer AS Custom
 	* XMLNodes - the XML point in the tree
 	* VFPObject - the VFP object that is being built
 	HIDDEN FUNCTION ReadXMLTree
-	LPARAMETERS XMLNodes AS MSXML2.IXMLDOMNodeList, VFPObject AS Object
+	LPARAMETERS XMLNodes AS MSXML2.IXMLDOMNodeList, VFPObject AS Object, IsDocument AS Boolean
 
 		SAFETHIS
 
@@ -724,13 +726,17 @@ DEFINE CLASS XMLSerializer AS Custom
 		* read comments?
 		LOCAL ReadComments AS Boolean
 		LOCAL Comments AS Integer
+		* read orphan texts?
+		LOCAL ReadOrphanTexts AS Boolean
+		LOCAL OrphanTexts AS Integer
 
 		m.NodeIndex = 0
 
-		m.ReadProcessingInstructions = This.GetOption(XMLSERIAL_PROCESSINGINSTRUCTIONS)
-		m.ReadComments = This.GetOption(XMLSERIAL_COMMENTS)
+		m.ReadOrphanTexts = m.IsDocument AND This._Op_WhiteSpace
+		m.ReadProcessingInstructions = This._Op_ProcessingInstruction
+		m.ReadComments = This._Op_Comment
 
-		STORE 0 TO m.ProcessingInstructions, m.Comments
+		STORE 0 TO m.ProcessingInstructions, m.Comments, m.OrphanTexts
 
 		* traverse every node in the list
 		FOR EACH m.Node IN m.XMLNodes
@@ -813,6 +819,11 @@ DEFINE CLASS XMLSerializer AS Custom
 
 				CASE .nodeType = NODE_COMMENT AND m.ReadComments
 					m.Comments = This._newComment(m.VFPObject, .nodeValue, m.Comments, m.NodeIndex)
+					LOOP
+
+				* orphan text nodes are located at the document level
+				CASE .nodeType = NODE_TEXT AND m.ReadOrphanTexts
+					m.OrphanTexts = This._newOrphanText(m.VFPObject, .nodeValue, m.OrphanTexts, m.NodeIndex)
 					LOOP
 
 				OTHERWISE			&& for all other cases ignore the XML source
@@ -937,7 +948,7 @@ DEFINE CLASS XMLSerializer AS Custom
 					* and set its/their values
 					m.AttributesVFPRoot = EVALUATE("m.NodeVFPRoot." + XML_ATTRIBUTE)
 					* by traversing the attribute list
-					This.ReadXMLTree(m.Attributes, m.AttributesVFPRoot)
+					This.ReadXMLTree(m.Attributes, m.AttributesVFPRoot, .F.)
 				
 				ENDIF
 				
@@ -945,7 +956,7 @@ DEFINE CLASS XMLSerializer AS Custom
 				IF .childNodes.length > 0
 				
 					* use the current node as the root of the XML tree
-					This.ReadXMLTree(.childNodes, m.NodeVFPRoot)
+					This.ReadXMLTree(.childNodes, m.NodeVFPRoot, .F.)
 				
 				ENDIF
 
@@ -1084,7 +1095,8 @@ DEFINE CLASS XMLSerializer AS Custom
 				* but disregard the XML* properties and other members which are not value properties
 				IF (LEFT(m.Properties[m.Loop], 3) != "XML" OR ;
 							m.Properties[m.Loop] == UPPER(XML_PI) OR ;
-							m.Properties[m.Loop] == UPPER(XML_COMMENT)) ;
+							m.Properties[m.Loop] == UPPER(XML_COMMENT) OR ;
+							(m.ProcessingLevel = VFP_DOCUMENT AND m.Properties[m.Loop] == UPPER(XML_ORPHANTEXT))) ;
 						AND TYPE("m.ObjSource." + m.Properties[m.Loop]) != "U"
 
 					DO CASE
@@ -1092,6 +1104,8 @@ DEFINE CLASS XMLSerializer AS Custom
 						m.ChildType = XML_ISPI
 					CASE m.Properties[m.Loop] == UPPER(XML_COMMENT)
 						m.ChildType = XML_ISCOMMENT
+					CASE m.Properties[m.Loop] == UPPER(XML_ORPHANTEXT)
+						m.ChildType = XML_ISTEXT
 					OTHERWISE
 						m.ChildType = XML_ISELEMENT
 					ENDCASE
@@ -1243,34 +1257,43 @@ DEFINE CLASS XMLSerializer AS Custom
 
 	ENDFUNC
 
+	* _newIndependentNode
+	* stores a new independent node
+	HIDDEN FUNCTION _newIndependentNode (VFPObject AS Object, NodeType AS String, Name AS String, Text AS String, Count AS Integer, Position AS Integer) AS Integer
+
+		LOCAL NewNode AS Empty
+		LOCAL NewCount AS Integer
+		LOCAL Texts AS Collection
+		LOCAL Nodes AS String
+
+		* get the text node
+		m.Texts = CREATEOBJECT("Collection")
+		m.Texts.Add(m.Text, XML_ISTEXT + "1")
+
+		m.NewNode = This._newVFPNode(m.Name, m.Texts, .NULL., .NULL., m.Position)
+
+		m.NewCount = m.Count + 1
+		m.Nodes = m.NodeType + "[" + TRANSFORM(m.NewCount) + "]"
+
+		IF m.NewCount = 1
+			* no nodes yet?
+			ADDPROPERTY(m.VFPObject, m.Nodes)
+		ELSE
+			* add to the already existing array of nodes, if this was not the first
+			DIMENSION m.VFPObject.&Nodes.
+		ENDIF
+
+		m.VFPObject.&Nodes. = m.NewNode
+
+		RETURN m.NewCount
+
+	ENDFUNC
+
 	* _newProcessingInstruction
 	* stores a new processing instruction in the VFP object
 	HIDDEN FUNCTION _newProcessingInstruction (VFPObject AS Object, Name AS String, Text AS String, PICount AS Integer, Position AS Integer) AS Integer
 
-		LOCAL NewPI AS Empty
-		LOCAL NewPICount AS Integer
-		LOCAL Texts AS Collection
-		LOCAL ProcessingInstructions AS String
-
-		m.Texts = CREATEOBJECT("Collection")
-		m.Texts.Add(m.Text, XML_ISTEXT + "1")
-
-		m.NewPI = This._newVFPNode(m.Name, m.Texts, .NULL., .NULL., m.Position)
-
-		m.NewPICount = m.PICount + 1
-		m.ProcessingInstructions = XML_PI + "[" + TRANSFORM(m.NewPICount) + "]"
-
-		IF m.NewPICount = 1
-			* no processing instructions yet?
-			ADDPROPERTY(m.VFPObject, m.ProcessingInstructions)
-		ELSE
-			* add to the already existing array, if this was not the first
-			DIMENSION m.VFPObject.&ProcessingInstructions.
-		ENDIF
-
-		m.VFPObject.&ProcessingInstructions. = m.NewPI
-
-		RETURN m.NewPICount
+		RETURN This._newIndependentNode(m.VFPObject, XML_PI, m.Name, m.Text, m.PICount, m.Position)
 
 	ENDFUNC
 
@@ -1278,30 +1301,15 @@ DEFINE CLASS XMLSerializer AS Custom
 	* stores a new comment in the VFP object
 	HIDDEN FUNCTION _newComment (VFPObject AS Object, Text AS String, CommentCount AS Integer, Position AS Integer) AS Integer
 
-		LOCAL NewComment AS Empty
-		LOCAL NewCommentCount AS Integer
-		LOCAL Texts AS Collection
-		LOCAL Comments AS String
+		RETURN This._newIndependentNode(m.VFPObject, XML_COMMENT, .NULL., m.Text, m.CommentCount, m.Position)
 
-		m.Texts = CREATEOBJECT("Collection")
-		m.Texts.Add(m.Text, XML_ISTEXT + "1")
+	ENDFUNC
 
-		m.NewComment = This._newVFPNode(.NULL., m.Texts, .NULL., .NULL., m.Position)
+	* _newOrphanText
+	* stores a new orphan text in the VFP object
+	HIDDEN FUNCTION _newOrphanText (VFPObject AS Object, Text AS String, OrphanTextCount AS Integer, Position AS Integer) AS Integer
 
-		m.NewCommentCount = m.CommentCount + 1
-		m.Comments = XML_COMMENT + "[" + TRANSFORM(m.NewCommentCount) + "]"
-
-		IF m.NewCommentCount = 1
-			* no comments yet?
-			ADDPROPERTY(m.VFPObject, m.Comments)
-		ELSE
-			* add to the already existing array, if this was not the first
-			DIMENSION m.VFPObject.&Comments.
-		ENDIF
-
-		m.VFPObject.&Comments. = m.NewComment
-
-		RETURN m.NewCommentCount
+		RETURN This._newIndependentNode(m.VFPObject, XML_ORPHANTEXT, .NULL., m.Text, m.OrphanTextCount, m.Position)
 
 	ENDFUNC
 
