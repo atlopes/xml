@@ -43,7 +43,7 @@
 *		-	xmlns
 *		-	xmlposition
 *
-*	m.VFP = m.XMLSerializer.GeSimpleCopy(VFPObject AS Object[, Options AS Integer])
+*	m.VFP = m.XMLSerializer.GetSimpleCopy(VFPObject AS Object[, Options AS Integer])
 *		Produces a simplified copy of the serialized object, from which the xml* information is stripped.
 *		The copy may be configured to produce added _value_ properties for mixed elements (with text and subtree), to
 *			hold text values in simplified xmltext properties, or to follow nfxml serializations.
@@ -74,7 +74,7 @@
 *				? m.Serializer.GetText(m.VFP.doc.child[2].xmlattributes.order)
 *			would return
 *				b
-*			(note that order may become _order, if an array, because order is not allowed as a VFP property name)
+*			(note that order may become _order, if an array, because order is not allowed as a VFP array property name)
 *
 *	m.Count = m.XMLSerializer.GetArrayLength (VFPObject.property)
 *		Retrieves the number of elements in a serialized array, or 0 if the property does not hold an array.
@@ -118,7 +118,7 @@ DEFINE CLASS XMLSerializer AS Custom
 						'<memberdata name="xmltovfp" type="method" display="XMLtoVFP"/>' + ;
 						'<memberdata name="vfptoxml" type="method" display="VFPtoXML"/>' + ;
 						'<memberdata name="gettext" type="method" display="GetText"/>' + ;
-						'<memberdata name="getsimplecopy" type="method" display="GeSimpleCopy"/>' + ;
+						'<memberdata name="getsimplecopy" type="method" display="GetSimpleCopy"/>' + ;
 						'<memberdata name="getarraylength" type="method" display="GetArrayLength"/>' + ;
 						'<memberdata name="setoption" type="method" display="SetOption"/>' + ;
 						'<memberdata name="getoption" type="method" display="GetOption"/>' + ;
@@ -163,9 +163,6 @@ DEFINE CLASS XMLSerializer AS Custom
 	FUNCTION Init
 	
 		SAFETHIS
-
-		* load now the namer library, if not already loaded
-		DO (LOCFILE("NAMER.PRG"))
 
 		* set the name translators for VFP and XML
 		This.DomainNamer.AttachProcessor("VFPNamer", LOCFILE("vfp-names.prg"))
