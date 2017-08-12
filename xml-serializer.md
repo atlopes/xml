@@ -18,6 +18,13 @@ m.XMLSerializer = CREATEOBJECT("XMLSerializer")
 *!* call methods...
 ```
 
+## Components
+```
+xml-serializer.prg
+xml-serializer.h
+xml-serializer-class.h
+```
+
 ## Dependencies
 `XMLSerializer` depends on `Namer`, a VFP class to translate names of a particular domain to another (in this case, from XML's domain to VFP's, and vice-versa).
 
@@ -36,7 +43,7 @@ Nodes and attributes that repeat their names - either because they occur more th
 Note:
 
 ------------
-This method started as a rewriting of Marco Plaza's nfxmlread(). The main intention for the rewrite was to target for round-tripability (that is, to be able to functionally recreate an XML document from a serialized VFP object). Although during the process many other features were included, the basic architecture of the method still inherits from Marco's original concept.
+This method started as a rewriting of Marco Plaza's [nfxmlread()](https://github.com/VFPX/nfXML "nfxmlread()"). The main intention for the rewrite was to target for round-tripability (that is, to be able to functionally recreate an XML document from a serialized VFP object). Although during the process many other features were included, the basic architecture of the method still inherits from Marco's original concept.
 
 ------------
 
@@ -92,10 +99,14 @@ m.Setting = m.XMLSerializer.GetOption(m.Option)
 Sets or gets serialization options (to and from XML).
 
 Available options (all of Logical type):
-- `XMLSERIAL_WHITESPACE`: preserve whitespace
-- `XMLSERIAL_PROCESSINGINSTRUCTIONS`: process processing instructions (`<?pi ?>`)
-- `XMLSERIAL_COMMENTS`: process comments (`<!-- -->`)
-- `XMLSERIAL_DTD`: process Document Type Definitions (`<!DOCTYPE >`) 
+- `XMLSERIAL_WHITESPACE`:
+-- preserve whitespace
+- `XMLSERIAL_PROCESSINGINSTRUCTIONS`:
+-- process processing instructions (`<?pi ?>`)
+- `XMLSERIAL_COMMENTS`:
+-- process comments (`<!-- -->`)
+- `XMLSERIAL_DTD`:
+-- process Document Type Definitions (`<!DOCTYPE >`) 
 
 ### GetSimpleCopy()
 ```foxpro

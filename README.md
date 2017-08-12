@@ -7,7 +7,7 @@ A set of VFP classes for XML processing.
 **[XMLSerializer](xml-serializer.md "XMLSerializer")**
 Reads an XML document to create a corresponding VFP object, or writes a serialized VFP object back to XML, or an original VFP object to XML.
 
-The reader concept was based on the original work by Marco Plaza, and on his great nfXMLread() function.
+The reader concept was based on the original work by Marco Plaza, and on his great [nfXMLread()](https://github.com/VFPX/nfXML "nfXMLread()") function.
 
 Status: complete.
 
@@ -16,7 +16,7 @@ Canonicalizes an XML document. Only the first W3C test cases are covered, for no
 
 Status: usable.
 
-**XMLSampler**
+**[XMLSampler](xml.sampler.md "XMLSampler")**
 Reads an XML Schema and produces a sample XML document, out of it.
 
 Status: usable.
