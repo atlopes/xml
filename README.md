@@ -16,7 +16,7 @@ Canonicalizes an XML document. Only the first W3C test cases are covered, for no
 
 Status: usable.
 
-**[XMLSampler](xml.sampler.md "XMLSampler")**
+**[XMLSampler](xml-sampler.md "XMLSampler")**
 Reads an XML Schema and produces a sample XML document, out of it.
 
 Status: usable.
