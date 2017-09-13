@@ -3,7 +3,7 @@ A VFP class to create an XML sample document from an XML Schema.
 
 The class wraps the transformation from the XSD to the XML, which is performed by two stylesheets that work in tandem: `samples-namespaces.xsl` reads required namespaces from the XML Schema, and inserts them into `samples-xml-generator.xsl`, a general purpose stylesheet to compose the actual sample.
 
-The XML schema may be a standalone XSD document, or an XML document that includes an XML Schema, such as a WSDL.
+The XML schema may be a standalone XSD document, or an XML document that includes XML Schemas, such as a WSDL.
 
 The resulting XML source document may be used for editing, before real use, and may be helpful in code development, testing, and documentation.
 
@@ -153,45 +153,68 @@ m.XMLSampler.SetOption("OptionalElements", "n")  && do not generate optional ele
 Full list of sampler options:
 ```xml
  <!-- parameters that govern the sampling process -->
+
+  <!-- leave blank for first schema defined in the document -->
+  <xsl:param name="sampleNamespace"></xsl:param>
+
   <!-- leave blank for first element defined in the schema -->
   <xsl:param name="sampleRootElement"></xsl:param>
+
   <!-- y/n to generate optional elements and attributes -->
   <xsl:param name="sampleOptionalElements">y</xsl:param>
   <xsl:param name="sampleOptionalAttributes">y</xsl:param>
+
   <!-- y/n to generate comments from the annotations -->
   <xsl:param name="sampleComments">y</xsl:param>
+
   <!-- what unbounded means: a (probably) small number -->
   <xsl:param name="sampleUnbounded">2</xsl:param>
+
   <!-- in choice groups, fetch the elements in "sequence", or always the "first", or "comment" all others -->
   <xsl:param name="sampleChoiceStrategy">sequence</xsl:param>
+
   <!-- y/n to show the restricted string length -->
   <xsl:param name="sampleStringLength">n</xsl:param>
+
   <!-- generate strings based on the "default" setting, or on the element/attribute "name"  -->
   <xsl:param name="sampleStringSource">name</xsl:param>
+
   <!-- y/n to sample patterns -->
   <xsl:param name="samplePattern">y</xsl:param>
+
   <!-- y/n to sample Boolean as a number 1/0 -->
   <xsl:param name="sampleBooleanAsNumber">n</xsl:param>
+
   <!-- y/n to sample URI as http address -->
   <xsl:param name="sampleURIasHTTP">y</xsl:param>
+
   <!-- the default value for a string -->
   <xsl:param name="sampleDefaultString">string</xsl:param>
+
   <!-- the default value for a number -->
   <xsl:param name="sampleDefaultNumber">0</xsl:param>
+
   <!-- the default value for dates -->
   <xsl:param name="sampleDefaultDate">2017-01-01T12:00:00</xsl:param>
+
   <!-- the default value for untyped text data -->
   <xsl:param name="sampleDefaultTextData">text data</xsl:param>
+
   <!-- the default value for boolean -->
   <xsl:param name="sampleDefaultBoolean">true</xsl:param>
+
   <!-- the default value for URI -->
   <xsl:param name="sampleDefaultURI">URI:#</xsl:param>
+
   <!-- the default value for http URI -->
   <xsl:param name="sampleDefaultHTTP">http://www.example.com</xsl:param>
+
   <!-- the default value for xml:space attribute value -->
   <xsl:param name="sampleDefaultXMLSpace">default</xsl:param>
+
   <!-- the default value for xml:lang attribute value -->
   <xsl:param name="sampleDefaultXMLLang">en</xsl:param>
+
   <!-- the default value for xml:base attribute value -->
   <xsl:param name="sampleDefaultXMLBase">http://www.example.com</xsl:param>
 ```
