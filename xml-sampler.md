@@ -27,9 +27,9 @@ sampler-xml-generator.xsl
 
 ## Methods
 
-### SampleXSD()
+### SampleSchema()
 ```foxpro
-m.XML = m.XMLSampler.SampleXSD (m.Source)
+m.XML = m.XMLSampler.SampleSchema (m.Source)
 ```
 Retrieves an XML Schema (standalone or contained) from a string, a URL, a file, or a DOM node, and returns a sample XML source document.
 
@@ -184,6 +184,10 @@ Full list of sampler options:
 
   <!-- y/n to sample Boolean as a number 1/0 -->
   <xsl:param name="sampleBooleanAsNumber">n</xsl:param>
+
+  <!-- the default values for binary data (encoding of the string "binary data")  -->
+  <xsl:param name="sampleDefaultBase64Binary">YmluYXJ5IGRhdGE=</xsl:param>
+  <xsl:param name="sampleDefaultHexBinary">62696E6172792064617461</xsl:param>
 
   <!-- y/n to sample URI as http address -->
   <xsl:param name="sampleURIasHTTP">y</xsl:param>

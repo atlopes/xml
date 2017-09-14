@@ -9,7 +9,7 @@
 * Usage:
 *  m.Sampler = CREATEOBJECT("XMLSampler")
 *  m.Sampler.SetOption("Option", "Setting")
-*  ? m.Sampler.SampleXSD("someSchema.xsd")
+*  ? m.Sampler.SampleSchema("someSchema.xsd")
 *
 
 * install itself
@@ -21,7 +21,15 @@ ENDIF
 
 DEFINE CLASS XMLSampler AS Custom
 
-	ADD OBJECT Options AS Collection
+	ADD OBJECT PROTECTED Options AS Collection
+
+	_memberdata = '<VFPData>' + ;
+						'<memberdata name="getoption" type="method" display="GetOption"/>' + ;
+						'<memberdata name="sampleschema" type="method" display="SampleSchema"/>' + ;
+						'<memberdata name="setoption" type="method" display="SetOption"/>' + ;
+						'</VFPData>'
+
+	HIDDEN SamplerXSL, SamplerNamespacesXSL
 
 	SamplerXSL = ""
 	SamplerNamespacesXSL = ""
@@ -63,20 +71,41 @@ DEFINE CLASS XMLSampler AS Custom
 	ENDPROC
 
 	* GetOption
-	* Get the current status of a set transformation option (empty values may denote that the option was not set by a SetOption() call).
+	* Get the current status of a set transformation option
 	FUNCTION GetOption (Option AS String) AS String
+
+		SAFETHIS
 
 		ASSERT TYPE("m.Option") == "C" ;
 			MESSAGE "String parameter expected."
 
-		RETURN IIF(This.Options.GetKey(m.Option) != 0, This.Options(m.Option), "")
+		LOCAL Setting AS String
 
+		* if previously set by a SetOption() call, this is the setting in use
+		IF This.Options.GetKey(m.Option) != 0
+			m.Setting = This.Options(m.Option)
+		ELSE
+			* otherwise, get the option from the stylesheet default
+			m.Setting = STREXTRACT(FILETOSTR(This.SamplerXSL), '<xsl:param name="sample' + m.Option + '">', '</xsl:param>', 1)
+			IF !EMPTY(m.Setting)
+				m.Setting = STRCONV(STRCONV(m.Setting, 11), 2)
+				* to-do: unencode
+			ENDIF
+		ENDIF
+
+		RETURN m.Setting
+			
 	ENDFUNC
 
 	* SampleXSD
+	* Deprecated -> SampleSchema
+	FUNCTION SampleXSD (XSDSource AS URLorDOMorString) AS String
+		RETURN SampleSchema(m.XSDSource)
+	ENDFUNC
+
 	* Generate an XML document based on an XML Schema
 	* Returns an XML document source
-	FUNCTION SampleXSD (XSDSource AS URLorDOMorString) AS String
+	FUNCTION SampleSchema (XSDSource AS URLorDOMorString) AS String
 
 		SAFETHIS
 

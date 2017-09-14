@@ -73,6 +73,10 @@
   <!-- the default value for boolean -->
   <xsl:param name="sampleDefaultBoolean">true</xsl:param>
 
+  <!-- the default values for binary data (encoding of the string "binary data")  -->
+  <xsl:param name="sampleDefaultBase64Binary">YmluYXJ5IGRhdGE=</xsl:param>
+  <xsl:param name="sampleDefaultHexBinary">62696E6172792064617461</xsl:param>
+
   <!-- the default value for URI -->
   <xsl:param name="sampleDefaultURI">URI:#</xsl:param>
 
@@ -177,6 +181,10 @@
   <!-- boolean -->
   <xsl:variable name="xsBoolean" select="concat($qxs, 'boolean')"/>
 
+  <!-- binary -->
+  <xsl:variable name="xsBase64Binary" select="concat($qxs, 'base64Binary')"/>
+  <xsl:variable name="xsHexBinary" select="concat($qxs, 'hexBinary')"/>
+
   <!-- URI -->
   <xsl:variable name="xsAnyURI" select="concat($qxs, 'anyURI')"/>
 
@@ -209,9 +217,13 @@
     <xsl:value-of select="concat('|', $xsDate)"/>
     <xsl:value-of select="concat('|', $xsDateTime, '|')"/>
   </xsl:variable>
-
+  <xsl:variable name="xsGroupBinary">
+    <xsl:value-of select="concat('|', $xsBase64Binary)"/>
+    <xsl:value-of select="concat('|', $xsHexBinary, '|')"/>
+  </xsl:variable>
+  
   <!--
-    the main template: locate the root element, as given by the parameter, and start the sampling from there
+    the main template: locate the root element, as given by the parameters or default, and start the sampling from there
   -->
   <xsl:template match="/">
     <xsl:choose>
@@ -1496,6 +1508,11 @@
           <xsl:with-param name="base" select="$xstype"/>
         </xsl:call-template>
       </xsl:when>
+      <xsl:when test="contains($xsGroupBinary, $xstype)">
+        <xsl:call-template name="binary">
+          <xsl:with-param name="base" select="$xstype"/>
+        </xsl:call-template>
+      </xsl:when>
       <xsl:when test="$xstype = $xsBoolean">
         <xsl:call-template name="boolean"/>
       </xsl:when>
@@ -1526,6 +1543,18 @@
     </xsl:choose>
   </xsl:template>
 
+  <xsl:template name="binary">
+    <xsl:param name="base"/>
+    <xsl:choose>
+      <xsl:when test="$base = $xsBase64Binary">
+        <xsl:value-of select="$sampleDefaultBase64Binary"/>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:value-of select="$sampleDefaultHexBinary"/>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+  
   <xsl:template name="date">
     <xsl:param name="base"/>
     <xsl:choose>
