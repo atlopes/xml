@@ -94,7 +94,7 @@
 
   <!-- fetch and store the prefix used for XML Schema namespace in the main schema -->
   <xsl:variable name="xs">
-    <xsl:for-each select="//xs:schema[@targetName = $sampleNamespace or position() = 1]/namespace::*[. = 'http://www.w3.org/2001/XMLSchema']">
+    <xsl:for-each select="//xs:schema[@targetNamespace = $sampleNamespace or ($sampleNamespace = '' and position() = 1)]/namespace::*[. = 'http://www.w3.org/2001/XMLSchema']">
       <xsl:value-of select="name()"/>
     </xsl:for-each>
   </xsl:variable>
@@ -107,7 +107,7 @@
 
   <!-- fetch and store the target namespace of the main schema -->
   <xsl:variable name="namespace">
-    <xsl:value-of select="//xs:schema[@targetName = $sampleNamespace or position() = 1]/@targetNamespace"/>
+    <xsl:value-of select="//xs:schema[@targetNamespace = $sampleNamespace or ($sampleNamespace = '' and position() = 1)]/@targetNamespace"/>
   </xsl:variable>
 
   <!-- get the namespace associated to a particular prefix -->
@@ -227,8 +227,8 @@
   -->
   <xsl:template match="/">
     <xsl:choose>
-      <xsl:when test="//xs:schema[@targetName = $sampleNamespace or position() = 1]/xs:element[@name = $sampleRootElement]">
-        <xsl:for-each select="//xs:schema[@targetName = $sampleNamespace or position() = 1]/xs:element[@name = $sampleRootElement]">
+      <xsl:when test="//xs:schema[@targetNamespace = $sampleNamespace or ($sampleNamespace = '' and position() = 1)]/xs:element[@name = $sampleRootElement]">
+        <xsl:for-each select="//xs:schema[@targetNamespace = $sampleNamespace or ($sampleNamespace = '' and position() = 1)]/xs:element[@name = $sampleRootElement]">
           <xsl:call-template name="element">
             <xsl:with-param name="root" select="true()"/>
             <xsl:with-param name="tree" select="''"/>
@@ -237,7 +237,7 @@
       </xsl:when>
       <xsl:otherwise>
         <!-- if the root element was not given, use the first defined element -->
-        <xsl:for-each select="//xs:schema[@targetName = $sampleNamespace or position() = 1]/xs:element[1]">
+        <xsl:for-each select="//xs:schema[@targetNamespace = $sampleNamespace or ($sampleNamespace = '' and position() = 1)]/xs:element[1]">
           <xsl:call-template name="element">
             <xsl:with-param name="root" select="true()"/>
             <xsl:with-param name="tree" select="''"/>
