@@ -1,7 +1,7 @@
 # XMLSerializer
 A VFP class to serialize an XML document into a VFP object, back and forth. It may also be used to serialize an arbitrary VFP object (or an object fragment) into an XML document.
 
-A serialized VFP object is based in the Empty class. Besides being filled with the original XML source data, to the VFP object a group of XML metadata properties are added. These properties will allow to re-serialize the data in XML without loss.
+A serialized VFP object is based in the Empty class. Besides being filled with the original XML source data, a group of XML metadata properties is addedto the VFP object . These properties will allow to re-serialize the data into XML without loss.
 
 Data elements can be accessed like a regular VFP object, by following its hierarchy, and the stored values are always of type Character.
 
@@ -19,14 +19,14 @@ m.XMLSerializer = CREATEOBJECT("XMLSerializer")
 ```
 
 ## Components
-```
-xml-serializer.prg
-xml-serializer.h
-xml-serializer-class.h
-```
+
+- [xml-serializer.prg](xml-serializer.prg "xml-serializer.prg")
+- [xml-serializer.h](xml-serializer.h "xml-serializer.h")
+- [xml-serializer-class.h](xml-serializer-class.h "xml-serializer-class.h")
+
 
 ## Dependencies
-`XMLSerializer` depends on `Namer`, a VFP class to translate names of a particular domain to another (in this case, from XML's domain to VFP's, and vice-versa).
+`XMLSerializer` depends on [Namer](https://bitbucket.org/atlopes/names "Namer"), a VFP class to translate names of a particular domain to another (in this case, from XML's domain to VFP's, and vice-versa).
 
 ## Methods
 

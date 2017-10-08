@@ -136,7 +136,7 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 	* ProcessingLevel - what is being processed at this level
 	* ParentNamespace - the namespace of the parent element
 	* Namespaces - the collection of namespaces referred so far
-	FUNCTION CanonicalizeVFPTree AS String
+	HIDDEN FUNCTION CanonicalizeVFPTree AS String
 	LPARAMETERS ObjSource AS SerializedVFPObject, ProcessingLevel AS Integer, ParentNamespace AS String, Namespaces AS Collection
 
 		* the canonicalized element
@@ -179,18 +179,15 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 		* copy of namespaces collections
 		LOCAL MyNamespaces AS Collection
 
-		* create a local instantiation of namespaces collection
+		* create a local instantiation of the namespaces collection
 		IF m.ProcessingLevel = VFP_ELEMENT
+			m.MyNamespaces = CREATEOBJECT("Collection")
 			IF ISNULL(m.Namespaces)
-				m.MyNamespaces = CREATEOBJECT("Collection")
 				m.MyNamespaces.Add("", ":")
 			ELSE
-				IF m.ProcessingLevel = VFP_ELEMENT
-					m.MyNamespaces = CREATEOBJECT("Collection")
-					FOR m.Loop = 1 TO m.Namespaces.Count
-						m.MyNamespaces.Add(m.Namespaces.Item(1), m.Namespaces.GetKey(m.Loop))
-					ENDFOR
-				ENDIF
+				FOR m.Loop = 1 TO m.Namespaces.Count
+					m.MyNamespaces.Add(m.Namespaces.Item(m.Loop), m.Namespaces.GetKey(m.Loop))
+				ENDFOR
 			ENDIF
 
 			m.XMLNS = CREATEOBJECT("Collection")

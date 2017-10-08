@@ -1,7 +1,7 @@
 # XMLSampler
 A VFP class to create an XML sample document from an XML Schema.
 
-The class wraps the transformation from the XSD to the XML, which is performed by two stylesheets that work in tandem: `samples-namespaces.xsl` reads required namespaces from the XML Schema, and inserts them into `samples-xml-generator.xsl`, a general purpose stylesheet to compose the actual sample.
+The class wraps the transformation from the XSD to the XML, which is performed by two stylesheets that work in tandem: `sampler-namespaces.xsl` reads required namespaces from the XML Schema, and inserts them into `sampler-xml-generator.xsl`, a general purpose stylesheet to compose the actual sample.
 
 The XML schema may be a standalone XSD document, or an XML document that includes XML Schemas, such as a WSDL.
 
@@ -19,11 +19,10 @@ m.XMLSampler = CREATEOBJECT("XMLSampler")
 ```
 
 ## Components
-```
-xml-sampler.prg
-sampler-namespaces.xsl
-sampler-xml-generator.xsl
-```
+
+- [xml-sampler.prg](xml-sampler.prg "xml-sampler.prg")
+- [sampler-namespaces.xsl](sampler-namespaces.xsl "sampler-namespaces.xsl")
+- [sampler-xml-generator.xsl](sampler-xml-generator.xsl "sampler-xml-generator.xsl")
 
 ## Methods
 
