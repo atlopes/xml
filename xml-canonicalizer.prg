@@ -161,6 +161,8 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 
 		* child reference when child is an array
 		LOCAL ChildElementReference AS String
+		LOCAL ChildrenIsArray AS Boolean
+		LOCAL ChildrenCount AS Integer
 		
 		* child object
 		LOCAL ChildObject AS Object
@@ -179,8 +181,10 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 		* copy of namespaces collections
 		LOCAL MyNamespaces AS Collection
 
-		* create a local instantiation of the namespaces collection
+		* if processing an Element, start by creating the canon of its name and its attribute
 		IF m.ProcessingLevel = VFP_ELEMENT
+
+			* create a local instantiation of the namespaces collection
 			m.MyNamespaces = CREATEOBJECT("Collection")
 			IF ISNULL(m.Namespaces)
 				m.MyNamespaces.Add("", ":")
@@ -190,58 +194,59 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 				ENDFOR
 			ENDIF
 
+			* this will hold the visible namespaces for this element level
 			m.XMLNS = CREATEOBJECT("Collection")
+			* and the element attributes
 			m.Attributes = CREATEOBJECT("Collection")
 
 			* names of the node
 			m.ElementName = NVL(m.ObjSource.xmlqname, m.ObjSource.xmlname)
 
+			* check for the visibility of the element namespace
 			This._visibleNS(m.ElementName, m.ObjSource.xmlns, m.MyNamespaces, m.XMLNS)
 
+			* process attributes, if there are any
 			IF TYPE("m.ObjSource.xmlattributes") != "U"
 				FOR m.Loop = 1 TO AMEMBERS(m.Properties, m.ObjSource.xmlattributes, 0, "U")
 					IF !LEFT(m.Properties[m.Loop], 3) == "XML"
 
 						m.ChildReference = "m.ObjSource.xmlattributes." + m.Properties[m.Loop]
+						m.ArrayLoop = 1
+						* there may be children of the same name (and different namespaces)
+						m.ChildrenIsArray = TYPE(m.ChildReference, 1) == "A"
+						IF m.ChildrenIsArray
+							m.ChildrenCount = ALEN(&ChildReference.)
+						ELSE
+							m.ChildrenCount = 1
+						ENDIF
 
-						IF TYPE(m.ChildReference, 1) = "A"
+						FOR m.ArrayLoop = 1 TO m.ChildrenCount
 
-							* if it is an array, process the namespace of every element
-							FOR m.ArrayLoop = 1 TO ALEN(&ChildReference.)
+							* if it is an array, process every child
+							IF m.ChildrenIsArray
 								m.ChildElementReference = m.ChildReference + "[" + TRANSFORM(m.ArrayLoop) + "]"
 								m.ChildObject = EVALUATE(m.ChildElementReference)
-								m.ObjectName = NVL(m.ChildObject.xmlqname, m.ChildObject.xmlname)
-								This._visibleNS(m.ObjectName, m.ChildObject.xmlns, m.MyNamespaces, m.XMLNS)
-								m.ObjectContents = This._canonAttribute(m.ObjSource.xmlname, m.ObjectName, m.ChildObject.xmltext.item(1))
-								m.Attributes.Add(m.ObjectContents, PADR(NVL(m.ChildObject.xmlns, ":") + m.ChildObject.xmlname, 200))
-							ENDFOR
-						ELSE
-							* do the same for single objects that are not part of arrays
-							m.ChildObject = EVALUATE(m.ChildReference)
+							ELSE
+							* or just the single child with the name
+								m.ChildObject = EVALUATE(m.ChildReference)
+							ENDIF
+
+							* get its name (qualified or local)
 							m.ObjectName = NVL(m.ChildObject.xmlqname, m.ChildObject.xmlname)
+							* check the visibility of its namespace
 							This._visibleNS(m.ObjectName, m.ChildObject.xmlns, m.MyNamespaces, m.XMLNS)
+							* and get its contents
 							m.ObjectContents = This._canonAttribute(m.ObjSource.xmlname, m.ObjectName, m.ChildObject.xmltext.item(1))
+							* save it for later (it will be output sorted by namespace/name order)
 							m.Attributes.Add(m.ObjectContents, PADR(NVL(m.ChildObject.xmlns, ":") + m.ChildObject.xmlname, 200))
-						ENDIF
+
+						ENDFOR
 					ENDIF
 				ENDFOR
 			ENDIF
 
-			m.Element = "<" + m.ElementName
-			IF m.XMLNS.Count > 0
-				m.XMLNS.KeySort = 2
-				FOR EACH m.ItemReference IN m.XMLNS
-					m.Element = m.Element + " " + m.ItemReference 
-				ENDFOR
-			ENDIF
-					
-			IF m.Attributes.Count > 0
-				m.Attributes.KeySort = 2
-				FOR EACH m.ItemReference IN m.Attributes
-					m.Element = m.Element + " " + m.ItemReference
-				ENDFOR
-			ENDIF
-			m.Element = m.Element + ">"
+			* get the element name and attributes, sorted according to the C14N specs
+			m.Element = "<" + m.ElementName + This._writeAttributes(m.XMLNS) + This._writeAttributes(m.Attributes) + ">"
 
 		ELSE
 			m.MyNamespaces = m.Namespaces
@@ -437,7 +442,26 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 
 		ENDIF
 	ENDFUNC
-	
+
+	* _writeAttributes
+	* output an attribute list (namespaces or regular attributes)
+	HIDDEN FUNCTION _writeAttributes (AttributeList AS Collection) AS String
+
+		LOCAL Output AS String
+
+		m.Output = ""
+
+		IF m.AttributeList.Count > 0
+			m.AttributeList.KeySort = 2
+			FOR EACH m.ItemReference IN m.AttributeList
+				m.Output = m.Output + " " + m.ItemReference
+			ENDFOR
+		ENDIF
+
+		RETURN m.Output
+
+	ENDFUNC
+
 	* _canonAttribute
 	* canonicalize an attribute
 	HIDDEN FUNCTION _canonAttribute (ElementName AS String, AttrName AS String, AttrValue AS String)
