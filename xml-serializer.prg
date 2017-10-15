@@ -277,7 +277,7 @@ DEFINE CLASS XMLSerializer AS Custom
 			m.SourceObject = This.Parser
 
 		ENDIF
-		
+
 		* if the document was parsed
 		IF EMPTY(This.XMLError)
 			m.VFPObject = CREATEOBJECT("Empty")
@@ -664,6 +664,7 @@ DEFINE CLASS XMLSerializer AS Custom
 		LOCAL Node AS MSXML2.IXMLDOMNode
 		LOCAL NodeIndex AS Integer
 		LOCAL NameSpace AS String
+		LOCAL Prefix AS String
 		LOCAL Prefixes AS Collection
 		LOCAL NodeVFPRoot AS Empty
 
@@ -731,37 +732,40 @@ DEFINE CLASS XMLSerializer AS Custom
 
 						* found a namespace declaration
 						IF m.NameSpaceDeclaration.namespaceURI == "http://www.w3.org/2000/xmlns/"
-						
-							* check if it is qualified
-							IF !(m.NameSpaceDeclaration.baseName == m.NameSpaceDeclaration.nodeName)
-							
-								* prepare the collection of prefixes, if not done already
-								IF ISNULL(m.Prefixes)
-									m.Prefixes = CREATEOBJECT("Collection")
-								ENDIF
-								
-								* add the prefixed namespace to the collection
-								m.Prefixes.Add(m.NameSpaceDeclaration.text, m.NameSpaceDeclaration.baseName)
+
+							* prepare the collection of prefixes, if not done already
+							IF ISNULL(m.Prefixes)
+								m.Prefixes = CREATEOBJECT("Collection")
 							ENDIF
+
+							* if not prefixed, use a default prefix key for the entry
+							IF m.NameSpaceDeclaration.baseName == m.NameSpaceDeclaration.nodeName
+								m.Prefix = ":"
+							ELSE
+								m.Prefix = m.NameSpaceDeclaration.baseName
+							ENDIF
+
+							* add the (prefixed?) namespace to the collection
+							m.Prefixes.Add(m.NameSpaceDeclaration.text, m.Prefix)
 						ENDIF
 					ENDFOR
 
 					* check if there are any attributes that are not namespaces
 					m.Attributes = .selectNodes("@*[namespace-uri(.) != 'http://www.w3.org/2000/xmlns/']")
 					m.HasAttributes = m.Attributes.length > 0
-					
+
 					m.TextNodeIndex = 0
 					m.Texts = .NULL.
 					m.Source = .NULL.
 
 					* traverse all children, looking for text nodes
 					FOR EACH m.TextNode IN .childNodes
-					
+
 						m.TextNodeIndex = m.TextNodeIndex + 1
 
 						* if a text or CDATA child was found
 						IF INLIST(m.TextNode.nodeType, NODE_TEXT, NODE_CDATA)
-						
+
 							* insert it in the texts collection, with its position marked
 							IF ISNULL(m.Texts)
 								m.Texts = CREATEOBJECT("Collection")
@@ -777,7 +781,7 @@ DEFINE CLASS XMLSerializer AS Custom
 					m.NameSpace = .namespaceURI
 				
 				CASE .nodeType = NODE_ATTRIBUTE		&& found an attribute
-				
+
 					* attributes do not have attributes
 					m.HasAttributes = .F.
 
