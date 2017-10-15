@@ -54,7 +54,7 @@ Example (from W3C test cases):
 </doc> 
 
 ```
-results in a canonicalized XML document
+results in a canonicalized XML document (EXC-C14N)
 ```xml
 <doc>
    <e1></e1>
@@ -72,9 +72,28 @@ results in a canonicalized XML document
 </doc>
 ```
 
-### SetOption() and GetOption()
+### SetMethod()
 ```foxpro
-m.XMLCanon.SetOption(m.Option, m.Setting)
-m.Setting = m.XMLCanon.GetOption(m.Option)
+m.XMLCanon.SetMethod(m.MethodURI)
 ```
-Sets or gets canonicalization options.
+Sets the canonicalization method, according to its algorithm URI.
+
+### SetInclusiveNamespaces()
+```foxpro
+m.XMLCanon.SetInclusiveNamespaces(m.PrefixList)
+```
+Sets the list of namespaces that will be canonicalized inclusively during an exclusive canonicalization.
+
+### SetOption()
+```foxpro
+m.XMLCanon.SetOption(m.Option)
+```
+Sets (by activating) canonicalization options.
+
+Options
+- "Default" (reset all options)
+- "Exclusive" (defaults to true)
+- "Inclusive" (defaults do false)
+- "Comments" (defaults to false)
+- "No-Comments" (defaults to true)
+- "Trim" (defaults to false)

@@ -367,11 +367,11 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 					* if it is an array, process every element
 					FOR m.ArrayLoop = 1 TO ALEN(&ChildReference.)
 						m.ChildElementReference = m.ChildReference + "[" + TRANSFORM(m.ArrayLoop) + "]"
-						This._prepareCanonXML(m.ObjSource, m.Positions, m.ChildType, m.ChildElementReference)
+						This._prepareCanonXML(m.Positions, m.ChildType, m.ChildElementReference)
 					ENDFOR
 				ELSE
 					* do the same for single objects that are not part of arrays
-					This._prepareCanonXML(m.ObjSource, m.Positions, m.ChildType, m.ChildReference)
+					This._prepareCanonXML(m.Positions, m.ChildType, m.ChildReference)
 				ENDIF
 			ENDIF
 		ENDFOR
@@ -473,9 +473,9 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 
 	ENDFUNC
 
-	* _prepareVFPNodeToXML
-	* adds a VFP node to the collection of nodes that will be serialized into XML
-	HIDDEN FUNCTION _prepareCanonXML (ObjSource AS anyVFPObject, Out AS Collection, TypeOfXMLNode AS Character, NodeReference AS String)
+	* _prepareCanonXML
+	* adds a VFP node to the collection of nodes that will be canonicalized
+	HIDDEN FUNCTION _prepareCanonXML (Out AS Collection, TypeOfXMLNode AS Character, NodeReference AS String)
 	
 		m.Out.Add(m.TypeOfXMLNode + m.NodeReference, TRANSFORM(EVALUATE(m.NodeReference + ".xmlposition"), SORTFORMAT))
 
@@ -533,7 +533,7 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 	* include namespaces declared at the current element
 	HIDDEN FUNCTION _includeNS (Prefix AS String, Namespace AS String, CurrentNamespaces AS Collection, DeclareNamespaces AS Collection)
 
-		This._visibleNS(IIF(m.Prefix == ":", "", m.Prefix + ":") + "name", m.Namespace, m.CurrentNamespaces, m.DeclareNamespaces)
+		This._visibleNS(IIF(m.Prefix == ":", "", m.Prefix + ":"), m.Namespace, m.CurrentNamespaces, m.DeclareNamespaces)
 
 	ENDFUNC
 
