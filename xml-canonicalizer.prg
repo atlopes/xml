@@ -36,6 +36,10 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 
 	ADD OBJECT Serializer AS XMLSerializer
 	
+	HIDDEN Inclusive
+	Inclusive = .F.
+	HIDDEN InclusiveNamespaces(1)
+	DIMENSION InclusiveNamespaces(1)
 	HIDDEN Trimmer
 	Trimmer = .F.
 	HIDDEN NMToken
@@ -45,7 +49,8 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 
 	_memberdata = '<VFPData>' + ;
 						'<memberdata name="setoption" type="method" display="SetOption"/>' + ;
-						'<memberdata name="getoption" type="method" display="GetOption"/>' + ;
+						'<memberdata name="setinclusivenamespaces" type="method" display="SetInclusiveNamespaces"/>' + ;
+						'<memberdata name="setmethod" type="method" display="SetMethod"/>' + ;
 						'<memberdata name="canonicalize" type="method" display="Canonicalize"/>' + ;
 						'<memberdata name="serializer" type="property" display="Serializer"/>' + ;
 						'</VFPData>'
@@ -56,6 +61,9 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 		This.Serializer.SetOption(XMLSERIAL_PROCESSINGINSTRUCTIONS, .T.)
 		This.Serializer.SetOption(XMLSERIAL_COMMENTS, .F.)
 		This.Serializer.SetOption(XMLSERIAL_DTD, .T.)
+		This.Inclusive = .F.
+		DIMENSION This.InclusiveNamespaces(1)
+		This.InclusiveNamespaces(1) = ""
 		This.Trimmer = .F.
 
 		RETURN .T.
@@ -75,14 +83,73 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 		CASE m.Option == "Default"
 			This.Init()
 
-		CASE m.Option == "Comment"
+		CASE m.Option == "Exclusive"
+			This.Inclusive = .F.
+
+		CASE m.Option == "Inclusive"
+			This.Inclusive = .T.
+
+		CASE m.Option == "Comments"
 			This.Serializer.SetOption(XMLSERIAL_COMMENTS, .T.)
+
+		CASE m.Option == "No-Comments"
+			This.Serializer.SetOption(XMLSERIAL_COMMENTS, .F.)
 
 		CASE m.Option == "Trim"
 			This.Trimmer = .T.
 
 		ENDCASE
 		
+	ENDFUNC
+
+	***************************************************************************************************
+	* SetMethod
+	
+	* Set the canonicalization algorithm
+	***************************************************************************************************
+	FUNCTION SetMethod (MethodURI AS String)
+
+		SAFETHIS
+
+		This.SetOption("Default")
+	
+		DO CASE
+		* Inclusive
+		CASE m.MethodURI == "http://www.w3.org/TR/2001/REC-xml-c14n-20010315"
+			This.SetOption("Inclusive")
+	
+			* Inclusive, with comments
+		CASE m.MethodURI == "http://www.w3.org/TR/2001/REC-xml-c14n-20010315#WithComments"
+			This.SetOption("Inclusive")
+			This.SetOption("Comments")
+
+		CASE m.MethodURI == "http://www.w3.org/2001/10/xml-exc-c14n#"
+			* default algorithm
+
+		CASE m.MethodURI == "http://www.w3.org/2001/10/xml-exc-c14n#WithComments"
+			This.SetOption("Comments")
+
+		ENDCASE
+
+	ENDFUNC
+
+	***************************************************************************************************
+	* SetInclusiveNamespaces
+	
+	* Set the inclusive namespaces for exclusive canonicalizations
+	***************************************************************************************************
+	FUNCTION SetInclusiveNamespaces (Namespaces AS String)
+
+		ASSERT TYPE("m.Namespaces") == "C" MESSAGE "Expected a string parameter."
+
+		LOCAL DefaultNS AS Integer
+
+		ALINES(This.InclusiveNamespaces, NVL(m.Namespaces, ""), 1 + 4, " ")
+		m.DefaultNS = ASCAN(This.InclusiveNamespaces, "#default", -1, -1, -1, 6)
+		IF m.DefaultNS != 0
+			This.InclusiveNamespaces(m.DefaultNS) = ":"
+		ENDIF
+
 	ENDFUNC
 
 	***************************************************************************************************
@@ -184,20 +251,24 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 		* if processing an Element, start by creating the canon of its name and its attribute
 		IF m.ProcessingLevel = VFP_ELEMENT
 
+			* this will hold the visible namespaces for this element level
+			m.XMLNS = CREATEOBJECT("Collection")
+			* and the element attributes
+			m.Attributes = CREATEOBJECT("Collection")
+
 			* create a local instantiation of the namespaces collection
 			m.MyNamespaces = CREATEOBJECT("Collection")
 			IF ISNULL(m.Namespaces)
-				m.MyNamespaces.Add("", ":")
+				IF !This.Inclusive AND ASCAN(This.InclusiveNamespaces, ":", -1, -1, -1, 6) != 0
+					This._includeNS(":", "", m.MyNamespaces, m.XMLNS)
+				ELSE
+					m.MyNamespaces.Add("", ":")
+				ENDIF 
 			ELSE
 				FOR m.Loop = 1 TO m.Namespaces.Count
 					m.MyNamespaces.Add(m.Namespaces.Item(m.Loop), m.Namespaces.GetKey(m.Loop))
 				ENDFOR
 			ENDIF
-
-			* this will hold the visible namespaces for this element level
-			m.XMLNS = CREATEOBJECT("Collection")
-			* and the element attributes
-			m.Attributes = CREATEOBJECT("Collection")
 
 			* names of the node
 			m.ElementName = NVL(m.ObjSource.xmlqname, m.ObjSource.xmlname)
@@ -245,8 +316,17 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 				ENDFOR
 			ENDIF
 
+			IF !ISNULL(m.ObjSource.xmlprefixes)
+				* if Inclusive C14N, insert all declared namespaces, used or not; for Exclusive C14N, do that only for declared inclusive namespaces
+				FOR m.Loop = 1 TO m.ObjSource.xmlprefixes.Count
+					IF This.Inclusive OR ASCAN(This.InclusiveNamespaces, m.ObjSource.xmlprefixes.GetKey(m.Loop), -1, -1, -1, 6) != 0
+						This._includeNS(m.ObjSource.xmlprefixes.GetKey(m.Loop), m.ObjSource.xmlprefixes.Item(m.Loop), m.MyNamespaces, m.XMLNS)
+					ENDIF
+				ENDFOR
+			ENDIF
+
 			* get the element name and attributes, sorted according to the C14N specs
-			m.Element = "<" + m.ElementName + This._writeAttributes(m.XMLNS) + This._writeAttributes(m.Attributes) + ">"
+			m.Element = "<" + m.ElementName + This._sortAttributes(m.XMLNS) + This._sortAttributes(m.Attributes) + ">"
 
 		ELSE
 			m.MyNamespaces = m.Namespaces
@@ -407,45 +487,59 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 
 		LOCAL KeyIndex AS Integer
 		LOCAL Prefix AS String
+		LOCAL KeyPrefix AS String
+		LOCAL Declaration AS String
 
-		IF !(":" $ m.ElementName)
+		* if the node namespace is the XML namespace, it won't be declared in the canonicalized form
+		IF !(m.Namespace == "http://www.w3.org/XML/1998/namespace")
 
-			m.KeyIndex = m.CurrentNamespaces.GetKey(":")
-
-			IF m.KeyIndex = 0
-				m.DeclareNamespaces.Add('xmlns="' + m.Namespace + '"', "0")
-				m.CurrentNamespaces.Add(m.Namespace, ":")
+			IF !(":" $ m.ElementName)
+				* default namespace, unprefixed
+				m.Prefix = ":"
+				* sorted at the beginning
+				m.KeyPrefix = "0"
+				m.Declaration = 'xmlns="' + m.Namespace + '"'
 			ELSE
-				IF !(m.CurrentNamespaces.Item(m.KeyIndex) == m.Namespace)
-					m.DeclareNamespaces.Add('xmlns="' + m.Namespace + '"', "0")
-					m.CurrentNamespaces.Remove(m.KeyIndex)
-					m.CurrentNamespaces.Add(m.Namespace, ":")
-				ENDIF
+				* the name of the element is qualified, get the prefix
+				m.Prefix = LEFT(m.ElementName, AT(":", m.ElementName) - 1)
+				* sort by prefix, after the default namespace
+				m.KeyPrefix = "1:" + m.Prefix
+				m.Declaration = 'xmlns:' + m.Prefix + '="' + m.Namespace + '"'
 			ENDIF
 
-		ELSE
-
-			m.Prefix = LEFT(m.ElementName, AT(":", m.ElementName) - 1)
-
+			* was it already declared?
 			m.KeyIndex = m.CurrentNamespaces.GetKey(m.Prefix)
 
 			IF m.KeyIndex = 0
-				m.DeclareNamespaces.Add('xmlns:' + m.Prefix + '="' + m.Namespace + '"', "1:" + m.Prefix)
+				* no, just add to the control collections
+				m.DeclareNamespaces.Add(m.Declaration, m.KeyPrefix)
 				m.CurrentNamespaces.Add(m.Namespace, m.Prefix)
 			ELSE
 				IF !(m.CurrentNamespaces.Item(m.KeyIndex) == m.Namespace)
-					m.DeclareNamespaces.Add('xmlns:' + m.Prefix + '="' + m.Namespace + '"', "1:" + m.Prefix)
+					* or replace, in case the namespace for the same element qualification was set differently
 					m.CurrentNamespaces.Remove(m.KeyIndex)
-					m.CurrentNamespaces.Add(m.Namespace, m.PrefixPrefix)
+					m.CurrentNamespaces.Add(m.Namespace, m.Prefix)
+					IF m.DeclareNamespaces.GetKey(m.KeyPrefix) != 0
+						m.DeclareNamespaces.Remove(m.DeclareNamespaces.GetKey(m.KeyPrefix))
+					ENDIF
+					m.DeclareNamespaces.Add(m.Declaration, m.KeyPrefix)
 				ENDIF
 			ENDIF
 
 		ENDIF
 	ENDFUNC
 
-	* _writeAttributes
-	* output an attribute list (namespaces or regular attributes)
-	HIDDEN FUNCTION _writeAttributes (AttributeList AS Collection) AS String
+	* _includeNS
+	* include namespaces declared at the current element
+	HIDDEN FUNCTION _includeNS (Prefix AS String, Namespace AS String, CurrentNamespaces AS Collection, DeclareNamespaces AS Collection)
+
+		This._visibleNS(IIF(m.Prefix == ":", "", m.Prefix + ":") + "name", m.Namespace, m.CurrentNamespaces, m.DeclareNamespaces)
+
+	ENDFUNC
+
+	* _sortAttributes
+	* output a sorted attribute list (namespaces or regular attributes)
+	HIDDEN FUNCTION _sortAttributes (AttributeList AS Collection) AS String
 
 		LOCAL Output AS String
 
