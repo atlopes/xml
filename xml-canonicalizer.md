@@ -28,9 +28,9 @@ m.XMLCanon = CREATEOBJECT("XMLCanonicalizer")
 
 ### Canonicalize()
 ```foxpro
-m.XML = m.XMLCanon.Canonicalize (m.Source)
+m.XML = m.XMLCanon.Canonicalize (m.Source[, m.XPath[, m.Namespaces]])
 ```
-Reads an XML document from a string, a URL, a file, or a DOM node, and returns its canonicalized form, as a text.
+Reads an XML document from a string, a URL, a file, or a DOM node, and returns its canonicalized form, as a text.  The canonicalization may start at the point determined by the ``m.XPath`` expression (the ``m.Namespaces`` parameter may be used to reference namespaces in the expression, and may take the form of a string or a collection of namespaces, keyed by their prefixes).
 
 Example (from W3C test cases):
 ```xml
@@ -72,6 +72,24 @@ results in a canonicalized XML document (EXC-C14N)
 </doc>
 ```
 
+or, inclusively, in (C14N)
+```xml
+<doc>
+   <e1></e1>
+   <e2></e2>
+   <e3 id="elem3" name="elem3"></e3>
+   <e4 id="elem4" name="elem4"></e4>
+   <e5 xmlns="http://example.org" xmlns:a="http://www.w3.org" xmlns:b="http://www.ietf.org" attr="I'm" attr2="all" b:attr="sorted" a:attr="out"></e5>
+   <e6 xmlns:a="http://www.w3.org">
+      <e7 xmlns="http://www.ietf.org">
+         <e8 xmlns="">
+            <e9 xmlns:a="http://www.ietf.org" attr="default"></e9>
+         </e8>
+      </e7>
+   </e6>
+</doc>
+```
+
 ### SetMethod()
 ```foxpro
 m.XMLCanon.SetMethod(m.MethodURI)
@@ -91,6 +109,7 @@ m.XMLCanon.SetOption(m.Option)
 Sets (by activating) canonicalization options.
 
 Options
+
 - "Default" (reset all options)
 - "Exclusive" (defaults to true)
 - "Inclusive" (defaults do false)

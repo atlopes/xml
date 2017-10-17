@@ -234,19 +234,30 @@ DEFINE CLASS XMLSerializer AS Custom
 	* XMLtoVFP
 	
 	* Source
-	*	- an URL, or file name, or string, with the XML to process
+	*	- a URL, or file name, or string, with the XML to process
+	* XPath
+	*	- an XPath expression that resolves to a node list
+	* Namespaces
+	*	- a string or a collection of keyed namespaces to resolve prefix references in XPath
 	
 	* Returns a VFP Empty-based object, or .NULL., if errors during loading of the document
 	***************************************************************************************************
 	FUNCTION XMLtoVFP AS Empty
-	LPARAMETERS Source AS StringURLorDOM
+	LPARAMETERS Source AS StringURLorDOM, XPath AS String, Namespaces AS CollectionOrString
 
 		SAFETHIS
 
 		ASSERT TYPE("m.Source") $ "CO" MESSAGE "Source must be a string or an object."
+		ASSERT PCOUNT() < 2 OR TYPE("m.XPath") == "C" MESSAGE "XPath must be a string expression."
+		ASSERT PCOUNT() < 3 OR TYPE("m.Namespaces") $ "CO" MESSAGE "Namespaces must be a string or an object."
 
 		LOCAL VFPObject AS Empty
-		LOCAL SourceObject AS MSXML2.IXMLDOMNode
+		LOCAL SourceObject AS MSXML2.DOMDocument60
+		LOCAL SourceTree AS MSXML2.IXMLDOMNodeList
+		LOCAL XPathError AS Exception
+		LOCAL CurrentNS AS String
+		LOCAL SelectionNS AS String
+		LOCAL LoopIndex AS Integer
 
 		This.XMLError = ""
 		This.XMLLine = 0
@@ -278,11 +289,54 @@ DEFINE CLASS XMLSerializer AS Custom
 
 		ENDIF
 
+		IF EMPTY(This.XMLError)
+
+			* if an XPath parameter was passed, use it to set the root of the serialization
+			IF !EMPTY(m.XPath)
+
+				TRY
+					* the namespaces used in the XPath expression may be set as a string or as a collection 
+					IF PCOUNT() = 3
+						m.CurrentNS = m.SourceObject.getProperty("SelectionNamespaces")
+						IF TYPE("m.Namespaces") == "C"
+							m.SelectionNS = m.Namespaces
+						ELSE
+							m.SelectionNS = ""
+							FOR m.LoopIndex = 1 TO m.Namespaces.Count
+								m.SelectionNS = m.SelectionNS + TEXTMERGE("xmlns:<<m.Namespaces.GetKey(m.LoopIndex)>>='<<m.Namespaces.Item(m.LoopIndex)>>' ")
+							ENDFOR
+						ENDIF
+						m.SourceObject.setProperty("SelectionNamespaces", m.SelectionNS)
+					ENDIF
+
+					* get the node list to serialize
+					m.SourceTree = m.SourceObject.selectNodes(m.XPath)
+
+					* restore the namespaces in use for selection
+					IF PCOUNT() = 3
+						m.SourceObject.setProperty("SelectionNamespaces", m.CurrentNS)
+					ENDIF
+
+				CATCH TO m.XPathError
+					This.XMLError = m.XPathError.Message
+					This.XMLLine = -1
+				ENDTRY
+
+			ELSE
+
+				m.SourceTree = m.SourceObject.childNodes()
+
+			ENDIF
+
+		ENDIF
+
+
 		* if the document was parsed
 		IF EMPTY(This.XMLError)
+
 			m.VFPObject = CREATEOBJECT("Empty")
 			* read the tree and put it in a VFP object
-			This.ReadXMLTree(m.SourceObject.childNodes(), m.VFPObject, .T.)
+			This.ReadXMLTree(m.SourceTree, m.VFPObject, .T.)
 		ELSE
 			* report failure
 			m.VFPObject = .NULL.

@@ -157,22 +157,30 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 	
 	* Source
 	*	- an URL, or file name, or string, with the XML to process
+	* XPath
+	*	- an XPath expression that resolves to a node list
+	* Namespaces
+	*	- a collection of keyed namespaces to resolve prefix references in XPath
 	
 	* Returns a canonicalized XML document, or .NULL., if errors during loading of the document
 	***************************************************************************************************
 	FUNCTION Canonicalize AS String
-	LPARAMETERS Source AS StringURLorDOM
+	LPARAMETERS Source AS StringURLorDOM, XPath AS String, Namespaces AS Collection
 
 		SAFETHIS
-
-		ASSERT TYPE("m.Source") $ "CO" MESSAGE "Source must be a string or an object."
 
 		LOCAL VFPObject AS Empty
 		LOCAL Canonicalized AS String
 
 		* try to serialize the source document/object
-
-		m.VFPObject = This.Serializer.XMLtoVFP(m.Source)
+		DO CASE
+		CASE PCOUNT() = 2
+			m.VFPObject = This.Serializer.XMLtoVFP(m.Source, m.XPath)
+		CASE PCOUNT() = 3
+			m.VFPObject = This.Serializer.XMLtoVFP(m.Source, m.XPath, m.Namespaces)
+		OTHERWISE
+			m.VFPObject = This.Serializer.XMLtoVFP(m.Source)
+		ENDCASE
 
 		IF !ISNULL(m.VFPObject)
 
@@ -367,11 +375,11 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 					* if it is an array, process every element
 					FOR m.ArrayLoop = 1 TO ALEN(&ChildReference.)
 						m.ChildElementReference = m.ChildReference + "[" + TRANSFORM(m.ArrayLoop) + "]"
-						This._prepareCanonXML(m.Positions, m.ChildType, m.ChildElementReference)
+						This._prepareCanonXML(m.ObjSource, m.Positions, m.ChildType, m.ChildElementReference)
 					ENDFOR
 				ELSE
 					* do the same for single objects that are not part of arrays
-					This._prepareCanonXML(m.Positions, m.ChildType, m.ChildReference)
+					This._prepareCanonXML(m.ObjSource, m.Positions, m.ChildType, m.ChildReference)
 				ENDIF
 			ENDIF
 		ENDFOR
@@ -475,7 +483,7 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 
 	* _prepareCanonXML
 	* adds a VFP node to the collection of nodes that will be canonicalized
-	HIDDEN FUNCTION _prepareCanonXML (Out AS Collection, TypeOfXMLNode AS Character, NodeReference AS String)
+	HIDDEN FUNCTION _prepareCanonXML (ObjSource AS VFPObject, Out AS Collection, TypeOfXMLNode AS Character, NodeReference AS String)
 	
 		m.Out.Add(m.TypeOfXMLNode + m.NodeReference, TRANSFORM(EVALUATE(m.NodeReference + ".xmlposition"), SORTFORMAT))
 

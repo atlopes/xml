@@ -32,9 +32,9 @@ m.XMLSerializer = CREATEOBJECT("XMLSerializer")
 
 ### XMLtoVFP()
 ```foxpro
-m.VFP = m.XMLSerializer.XMLtoVFP (m.Source)
+m.VFP = m.XMLSerializer.XMLtoVFP (m.Source[, m.XPath[, m.Namespaces]])
 ```
-Retrieves an XML document from a string, a URL, a file, or a DOM node, and returns a VFP Empty-based object matching the XML tree.
+Retrieves an XML document from a string, a URL, a file, or a DOM node, and returns a VFP Empty-based object matching the XML tree. The serialization may start at the point determined by the ``m.XPath`` expression (the ``m.Namespaces`` parameter may be used to reference namespaces in the expression, and may take the form of a string or a collection of namespaces, keyed by their prefixes).
 
 `xml*` members of the returned object control different properties of the XML nodes: the original name, the attributes, the namespace, the original position, and others.
 

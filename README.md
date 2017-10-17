@@ -1,4 +1,4 @@
-# VFP XML classes
+# VFP XML Library Set
 
 A set of VFP classes for XML processing.
 
