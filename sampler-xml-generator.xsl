@@ -92,31 +92,10 @@
   <!-- the default value for xml:base attribute value -->
   <xsl:param name="sampleDefaultXMLBase">http://www.example.com</xsl:param>
 
-  <!-- fetch and store the prefix used for XML Schema namespace in the main schema -->
-  <xsl:variable name="xs">
-    <xsl:for-each select="//xs:schema[@targetNamespace = $sampleNamespace or ($sampleNamespace = '' and position() = 1)]/namespace::*[. = 'http://www.w3.org/2001/XMLSchema']">
-      <xsl:value-of select="name()"/>
-    </xsl:for-each>
-  </xsl:variable>
-  <!-- set the prefix, with colon, or empty, if default namespace -->
-  <xsl:variable name="qxs">
-    <xsl:if test="$xs != ''">
-      <xsl:value-of select="concat($xs, ':')"/>
-    </xsl:if>
-  </xsl:variable>
-
   <!-- fetch and store the target namespace of the main schema -->
   <xsl:variable name="namespace">
     <xsl:value-of select="//xs:schema[@targetNamespace = $sampleNamespace or ($sampleNamespace = '' and position() = 1)]/@targetNamespace"/>
   </xsl:variable>
-
-  <!-- get the namespace associated to a particular prefix -->
-  <xsl:template name="getNamespace">
-    <xsl:param name="qname"/>
-
-    <xsl:variable name="prefix" select="substring-before($qname, ':')"/>
-    <xsl:value-of select="ancestor-or-self::*/namespace::*[name() = $prefix]"/>
-  </xsl:template>
 
   <!-- get the prefix associated to a particular namespace -->
   <xsl:template name="getPrefix">
@@ -125,68 +104,43 @@
     <xsl:value-of select="name(ancestor-or-self::*/namespace::*[. = $namespace])"/>
   </xsl:template>
 
-  <!-- get the local prefix - if any - associated to the XML Schema namespace, for a typed attribute value -->
-  <xsl:template name="getLocalXS">
-    <xsl:param name="dtype" select="@type"/>
-
-    <xsl:variable name="localPrefix">
-      <xsl:for-each select="/*/namespace::*[. = 'http://www.w3.org/2001/XMLSchema']">
-        <xsl:value-of select="name()"/>
-      </xsl:for-each>
-    </xsl:variable>
-
-    <!-- recreate the value using the global prefix denoted by variable $xs -->
-    <xsl:choose>
-      <xsl:when test="$localPrefix = '' and $xs != ''">
-        <xsl:value-of select="concat($qxs, $dtype)"/>
-      </xsl:when>
-      <xsl:when test="$localPrefix != $xs">
-        <xsl:value-of select="concat($qxs, substring-after($dtype, ':'))"/>
-      </xsl:when>
-      <xsl:otherwise>
-        <xsl:value-of select="$dtype"/>
-      </xsl:otherwise>
-    </xsl:choose>
-
-  </xsl:template>
-
   <!-- string types -->
-  <xsl:variable name="xsID" select="concat($qxs, 'ID')"/>
-  <xsl:variable name="xsIDREF" select="concat($qxs, 'IDREF')"/>
-  <xsl:variable name="xsString" select="concat($qxs, 'string')"/>
-  <xsl:variable name="xsLanguage" select="concat($qxs, 'language')"/>
-  <xsl:variable name="xsToken" select="concat($qxs, 'token')"/>
-  <xsl:variable name="xsNormalizedString" select="concat($qxs, 'normalizedString')"/>
+  <xsl:variable name="xsID">ID</xsl:variable>
+  <xsl:variable name="xsIDREF">IDREF</xsl:variable>
+  <xsl:variable name="xsString">string</xsl:variable>
+  <xsl:variable name="xsLanguage">language</xsl:variable>
+  <xsl:variable name="xsToken">token</xsl:variable>
+  <xsl:variable name="xsNormalizedString">normalizedString</xsl:variable>
 
   <!-- numeric types -->
-  <xsl:variable name="xsByte" select="concat($qxs, 'byte')"/>
-  <xsl:variable name="xsDecimal" select="concat($qxs, 'decimal')"/>
-  <xsl:variable name="xsInt" select="concat($qxs, 'int')"/>
-  <xsl:variable name="xsInteger" select="concat($qxs, 'integer')"/>
-  <xsl:variable name="xsLong" select="concat($qxs, 'long')"/>
-  <xsl:variable name="xsNegativeInteger" select="concat($qxs, 'negativeInteger')"/>
-  <xsl:variable name="xsNonNegativeInteger" select="concat($qxs, 'nonNegativeInteger')"/>
-  <xsl:variable name="xsNonPositiveInteger" select="concat($qxs, 'nonPositiveInteger')"/>
-  <xsl:variable name="xsPositiveInteger" select="concat($qxs, 'positiveInteger')"/>
-  <xsl:variable name="xsShort" select="concat($qxs, 'short')"/>
-  <xsl:variable name="xsUnsignedByte" select="concat($qxs, 'unsignedByte')"/>
-  <xsl:variable name="xsUnsignedInt" select="concat($qxs, 'unsignedInt')"/>
-  <xsl:variable name="xsUnsignedLong" select="concat($qxs, 'unsignedLong')"/>
-  <xsl:variable name="xsUnsignedShort" select="concat($qxs, 'unsignedShort')"/>
+  <xsl:variable name="xsByte">byte</xsl:variable>
+  <xsl:variable name="xsDecimal">decimal</xsl:variable>
+  <xsl:variable name="xsInt">int</xsl:variable>
+  <xsl:variable name="xsInteger">integer</xsl:variable>
+  <xsl:variable name="xsLong">long</xsl:variable>
+  <xsl:variable name="xsNegativeInteger">negativeInteger</xsl:variable>
+  <xsl:variable name="xsNonNegativeInteger">nonNegativeInteger</xsl:variable>
+  <xsl:variable name="xsNonPositiveInteger">nonPositiveInteger</xsl:variable>
+  <xsl:variable name="xsPositiveInteger">positiveInteger</xsl:variable>
+  <xsl:variable name="xsShort">short</xsl:variable>
+  <xsl:variable name="xsUnsignedByte">unsignedByte</xsl:variable>
+  <xsl:variable name="xsUnsignedInt">unsignedInt</xsl:variable>
+  <xsl:variable name="xsUnsignedLong">unsignedLong</xsl:variable>
+  <xsl:variable name="xsUnsignedShort">unsignedShort</xsl:variable>
 
   <!-- date types -->
-  <xsl:variable name="xsDate" select="concat($qxs, 'date')"/>
-  <xsl:variable name="xsDateTime" select="concat($qxs, 'dateTime')"/>
+  <xsl:variable name="xsDate">date</xsl:variable>
+  <xsl:variable name="xsDateTime">dateTime</xsl:variable>
 
   <!-- boolean -->
-  <xsl:variable name="xsBoolean" select="concat($qxs, 'boolean')"/>
+  <xsl:variable name="xsBoolean">boolean</xsl:variable>
 
   <!-- binary -->
-  <xsl:variable name="xsBase64Binary" select="concat($qxs, 'base64Binary')"/>
-  <xsl:variable name="xsHexBinary" select="concat($qxs, 'hexBinary')"/>
+  <xsl:variable name="xsBase64Binary">base64Binary</xsl:variable>
+  <xsl:variable name="xsHexBinary">hexBinary</xsl:variable>
 
   <!-- URI -->
-  <xsl:variable name="xsAnyURI" select="concat($qxs, 'anyURI')"/>
+  <xsl:variable name="xsAnyURI">anyURI</xsl:variable>
 
   <!-- convenient reference to types, grouped by base type -->
   <xsl:variable name="xsGroupString">
@@ -261,18 +215,20 @@
     <xsl:param name="root" select="false()"/>
     <xsl:param name="commented" select="false()"/>
     <xsl:param name="tree"/>
+    <xsl:param name="targetNS"/>
 
     <xsl:for-each select="ancestor::xs:schema[1]/xs:include | ancestor::xs:schema[1]/xs:import">
       <xsl:variable name="impNamespace" select="@namespace"/>
       <xsl:for-each select="(document(@schemaLocation)//xs:schema | //xs:schema[@targetNamespace = $impNamespace])[1]">
         <xsl:variable name="includeNamespace" select="@targetNamespace"/>
         <xsl:choose>
-          <xsl:when test="xs:element[@name = $elementRef or @name = substring-after($elementRef, ':')]">
-            <xsl:for-each select="xs:element[@name = $elementRef or @name = substring-after($elementRef, ':')]">
+          <xsl:when test="xs:element[@name = $elementRef and $includeNamespace = $targetNS]">
+            <xsl:for-each select="xs:element[@name = $elementRef and $includeNamespace = $targetNS]">
               <xsl:call-template name="element">
                 <xsl:with-param name="includeNamespace" select="$includeNamespace"/>
                 <xsl:with-param name="root" select="$root"/>
                 <xsl:with-param name="tree" select="$tree"/>
+                <xsl:with-param name="commented" select="$commented"/>
               </xsl:call-template>
             </xsl:for-each>
           </xsl:when>
@@ -280,7 +236,9 @@
             <xsl:call-template name="includeElements">
               <xsl:with-param name="elementRef" select="$elementRef"/>
               <xsl:with-param name="root" select="$root"/>
+              <xsl:with-param name="commented" select="$commented"/>
               <xsl:with-param name="tree" select="$tree"/>
+              <xsl:with-param name="targetNS" select="$targetNS"/>
             </xsl:call-template>
           </xsl:otherwise>
         </xsl:choose>
@@ -290,14 +248,15 @@
 
   <xsl:template name="includeAttributes">
     <xsl:param name="attribRef"/>
+    <xsl:param name="targetNS"/>
 
     <xsl:for-each select="ancestor::xs:schema[1]/xs:include | ancestor::xs:schema[1]/xs:import">
       <xsl:variable name="impNamespace" select="@namespace"/>
       <xsl:for-each select="(document(@schemaLocation)//xs:schema | //xs:schema[@targetNamespace = $impNamespace])[1]">
         <xsl:variable name="includeNamespace" select="@targetNamespace"/>
         <xsl:choose>
-          <xsl:when test="xs:attribute[@name = $attribRef or @name = substring-after($attribRef, ':')]">
-            <xsl:for-each select="xs:attribute[@name = $attribRef or @name = substring-after($attribRef, ':')]">
+          <xsl:when test="xs:attribute[@name = $attribRef and $includeNamespace = $targetNS]">
+            <xsl:for-each select="xs:attribute[@name = $attribRef and $includeNamespace = $targetNS]">
               <xsl:call-template name="attribute">
                 <xsl:with-param name="includeNamespace" select="$includeNamespace"/>
               </xsl:call-template>
@@ -306,6 +265,7 @@
           <xsl:otherwise>
             <xsl:call-template name="includeAttributes">
               <xsl:with-param name="attribRef" select="$attribRef"/>
+              <xsl:with-param name="targetNS" select="$targetNS"/>
             </xsl:call-template>
           </xsl:otherwise>
         </xsl:choose>
@@ -320,28 +280,33 @@
     <xsl:param name="tree"/>
     <xsl:param name="instance" select="1"/>
     <xsl:param name="nodeName"/>
-
+    <xsl:param name="targetNS"/>
+ 
     <xsl:for-each select="ancestor::xs:schema[1]/xs:include | ancestor::xs:schema[1]/xs:import">
       <xsl:variable name="impNamespace" select="@namespace"/>
       <xsl:for-each select="(document(@schemaLocation)//xs:schema | //xs:schema[@targetNamespace = $impNamespace])[1]">
         <xsl:variable name="includeNamespace" select="@targetNamespace"/>
         <xsl:choose>
-          <xsl:when test="xs:complexType[@name = $typeRef or @name = substring-after($typeRef, ':')]">
-            <xsl:for-each select="xs:complexType[@name = $typeRef or @name = substring-after($typeRef, ':')]">
+          <xsl:when test="xs:complexType[@name = $typeRef and $includeNamespace = $targetNS]">
+            <xsl:for-each select="xs:complexType[@name = $typeRef and $includeNamespace = $targetNS]">
               <xsl:call-template name="complexType">
                 <xsl:with-param name="includeNamespace" select="$includeNamespace"/>
+                <xsl:with-param name="root" select="$root"/>
                 <xsl:with-param name="tree" select="$tree"/>
                 <xsl:with-param name="instance" select="$instance"/>
                 <xsl:with-param name="nodeName" select="$nodeName"/>
+                <xsl:with-param name="commented" select="$commented"/>
               </xsl:call-template>
             </xsl:for-each>
           </xsl:when>
           <xsl:otherwise>
             <xsl:call-template name="includeComplexTypes">
               <xsl:with-param name="typeRef" select="$typeRef"/>
+              <xsl:with-param name="root" select="$root"/>
               <xsl:with-param name="tree" select="$tree"/>
               <xsl:with-param name="instance" select="$instance"/>
               <xsl:with-param name="nodeName" select="$nodeName"/>
+              <xsl:with-param name="targetNS" select="$targetNS"/>
             </xsl:call-template>
           </xsl:otherwise>
         </xsl:choose>
@@ -351,32 +316,39 @@
 
   <xsl:template name="includeGroups">
     <xsl:param name="typeRef"/>
+    <xsl:param name="root" select="false()"/>
     <xsl:param name="commented" select="false()"/>
     <xsl:param name="tree"/>
     <xsl:param name="instance" select="1"/>
     <xsl:param name="nodeName"/>
+    <xsl:param name="targetNS"/>
 
     <xsl:for-each select="ancestor::xs:schema[1]/xs:include | ancestor::xs:schema[1]/xs:import">
       <xsl:variable name="impNamespace" select="@namespace"/>
       <xsl:for-each select="(document(@schemaLocation)//xs:schema | //xs:schema[@targetNamespace = $impNamespace])[1]">
         <xsl:variable name="includeNamespace" select="/@targetNamespace"/>
         <xsl:choose>
-          <xsl:when test="xs:group[@name = $typeRef or @name = substring-after($typeRef, ':')]">
-            <xsl:for-each select="/xs:group[@name = $typeRef or @name = substring-after($typeRef, ':')]/xs:*">
+          <xsl:when test="xs:group[@name = $typeRef and $includeNamespace = $targetNS]">
+            <xsl:for-each select="/xs:group[@name = $typeRef and $includeNamespace = $targetNS]/xs:*">
               <xsl:call-template name="complexType">
                 <xsl:with-param name="includeNamespace" select="$includeNamespace"/>
+                <xsl:with-param name="root" select="$root"/>
                 <xsl:with-param name="tree" select="$tree"/>
                 <xsl:with-param name="instance" select="$instance"/>
                 <xsl:with-param name="nodeName" select="$nodeName"/>
+                <xsl:with-param name="commented" select="$commented"/>
               </xsl:call-template>
             </xsl:for-each>
           </xsl:when>
           <xsl:otherwise>
             <xsl:call-template name="includeGroups">
               <xsl:with-param name="typeRef" select="$typeRef"/>
+              <xsl:with-param name="root" select="$root"/>
               <xsl:with-param name="tree" select="$tree"/>
+              <xsl:with-param name="commented" select="$commented"/>
               <xsl:with-param name="instance" select="$instance"/>
               <xsl:with-param name="nodeName" select="$nodeName"/>
+              <xsl:with-param name="targetNS" select="$targetNS"/>
             </xsl:call-template>
           </xsl:otherwise>
         </xsl:choose>
@@ -386,14 +358,15 @@
 
   <xsl:template name="includeAttributeGroups">
     <xsl:param name="typeRef"/>
+    <xsl:param name="targetNS"/>
 
     <xsl:for-each select="ancestor::xs:schema[1]/xs:include | ancestor::xs:schema[1]/xs:import">
       <xsl:variable name="impNamespace" select="@namespace"/>
       <xsl:for-each select="(document(@schemaLocation)//xs:schema | //xs:schema[@targetNamespace = $impNamespace])[1]">
         <xsl:variable name="includeNamespace" select="@targetNamespace"/>
         <xsl:choose>
-          <xsl:when test="xs:attributeGroup[@name = $typeRef or @name = substring-after($typeRef, ':')]">
-            <xsl:for-each select="xs:attributeGroup[@name = $typeRef or @name = substring-after($typeRef, ':')]">
+          <xsl:when test="xs:attributeGroup[@name = $typeRef and $includeNamespace = $targetNS]">
+            <xsl:for-each select="xs:attributeGroup[@name = $typeRef and $includeNamespace = $targetNS]">
               <xsl:call-template name="attributeGroup">
                 <xsl:with-param name="includeNamespace" select="$includeNamespace"/>
               </xsl:call-template>
@@ -402,6 +375,7 @@
           <xsl:otherwise>
             <xsl:call-template name="includeAttributeGroups">
               <xsl:with-param name="typeRef" select="$typeRef"/>
+              <xsl:with-param name="targetNS" select="$targetNS"/>
             </xsl:call-template>
           </xsl:otherwise>
         </xsl:choose>
@@ -412,22 +386,26 @@
   <xsl:template name="includeSimpleTypes">
     <xsl:param name="typeRef"/>
     <xsl:param name="nodeName"/>
+    <xsl:param name="targetNS"/>
 
     <xsl:for-each select="ancestor::xs:schema[1]/xs:include | ancestor::xs:schema[1]/xs:import">
       <xsl:variable name="impNamespace" select="@namespace"/>
       <xsl:for-each select="(document(@schemaLocation)//xs:schema | //xs:schema[@targetNamespace = $impNamespace])[1]">
         <xsl:variable name="includeNamespace" select="@targetNamespace"/>
         <xsl:choose>
-          <xsl:when test="xs:simpleType[@name = $typeRef or @name = substring-after($typeRef, ':')]">
-            <xsl:for-each select="/xs:simpleType[@name = $typeRef or @name = substring-after($typeRef, ':')]">
+          <xsl:when test="xs:simpleType[@name = $typeRef and $includeNamespace = $targetNS]">
+            <xsl:for-each select="xs:simpleType[@name = $typeRef and $includeNamespace = $targetNS]">
               <xsl:call-template name="simpleType">
                 <xsl:with-param name="includeNamespace" select="$includeNamespace"/>
+                <xsl:with-param name="nodeName" select="$nodeName"/>
               </xsl:call-template>
             </xsl:for-each>
           </xsl:when>
           <xsl:otherwise>
             <xsl:call-template name="includeSimpleTypes">
               <xsl:with-param name="typeRef" select="$typeRef"/>
+              <xsl:with-param name="nodeName" select="$nodeName"/>
+              <xsl:with-param name="targetNS" select="$targetNS"/>
             </xsl:call-template>
           </xsl:otherwise>
         </xsl:choose>
@@ -463,12 +441,28 @@
       <!-- if the element is based on a reference -->
       <xsl:when test="@ref">
 
-        <xsl:variable name="elementRef" select="@ref"/>
+        <xsl:variable name="elementRef">
+          <xsl:choose>
+            <xsl:when test="contains(@ref, ':')"><xsl:value-of select="substring-after(@ref, ':')"/></xsl:when>
+            <xsl:otherwise><xsl:value-of select="@ref"/></xsl:otherwise>
+          </xsl:choose>
+        </xsl:variable>
+        <xsl:variable name="elementRefNamespace">
+          <xsl:choose>
+            <xsl:when test="contains(@ref, ':')">
+              <xsl:variable name="prefix" select="substring-before(@ref, ':')"/>
+              <xsl:value-of select="namespace::*[name() = $prefix]"/>
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:value-of select="$namespace"/>
+            </xsl:otherwise>
+          </xsl:choose>
+        </xsl:variable>
 
         <!-- look for it in the current schema, or in its included schemas -->
         <xsl:choose>
-          <xsl:when test="ancestor::xs:schema[1]/xs:element[@name = $elementRef or @name = substring-after($elementRef, ':')]">
-            <xsl:for-each select="ancestor::xs:schema[1]/xs:element[@name = $elementRef or @name = substring-after($elementRef, ':')]">
+          <xsl:when test="ancestor::xs:schema[position() = 1 and string(@targetNamespace) = $elementRefNamespace]/xs:element[@name = $elementRef]">
+            <xsl:for-each select="ancestor::xs:schema[1]/xs:element[@name = $elementRef]">
               <xsl:call-template name="element">
                 <xsl:with-param name="includeNamespace" select="$includeNamespace"/>
                 <xsl:with-param name="root" select="$root"/>
@@ -483,6 +477,7 @@
               <xsl:with-param name="elementRef" select="$elementRef"/>
               <xsl:with-param name="commented" select="$commented"/>
               <xsl:with-param name="tree" select="$tree"/>
+              <xsl:with-param name="targetNS" select="$elementRefNamespace"/>
             </xsl:call-template>
           </xsl:otherwise>
         </xsl:choose>
@@ -603,7 +598,7 @@
     <xsl:param name="tree"/>
     <xsl:param name="instance" select="1"/>
     <xsl:param name="elementName" select="@name"/>
-    
+
     <xsl:choose>
 
       <!-- fixed or default values have higher priority: if present, they are used to create the sample value -->
@@ -611,37 +606,40 @@
         <xsl:value-of select="@fixed | @default"/>
       </xsl:when>
 
-      <!-- if of XSD type, create an appropriate sample value -->
-      <xsl:when test="starts-with(@type, $qxs)">
-        <xsl:call-template name="types">
-          <xsl:with-param name="nodeName" select="$elementName"/>
-        </xsl:call-template>
-      </xsl:when>
-
       <!-- if typed -->
       <xsl:when test="@type">
 
-        <!-- consider the possibility of XSD having a different prefix in an imported schema
-              so get a copy with the global xs prefix -->
-        <xsl:variable name="qtype">
-          <xsl:call-template name="getLocalXS"/>
+        <xsl:variable name="elementType">
+          <xsl:choose>
+            <xsl:when test="contains(@type, ':')"><xsl:value-of select="substring-after(@type, ':')"/></xsl:when>
+            <xsl:otherwise><xsl:value-of select="@type"/></xsl:otherwise>
+          </xsl:choose>
+        </xsl:variable>
+        <xsl:variable name="elementTypeNamespace">
+          <xsl:choose>
+            <xsl:when test="contains(@type, ':')">
+              <xsl:variable name="prefix" select="substring-before(@type, ':')"/>
+              <xsl:value-of select="namespace::*[name() = $prefix]"/>
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:value-of select="$namespace"/>
+            </xsl:otherwise>
+          </xsl:choose>
         </xsl:variable>
 
-        <xsl:variable name="elementType" select="@type"/>
+       <xsl:choose>
 
-        <xsl:choose>
-
-          <!-- make a second try for basic XSD types (if the XML Schema namespace changed prefix) -->
-          <xsl:when test="starts-with($qtype, $qxs)">
+         <!-- an XS builtin type? -->
+         <xsl:when test="$elementTypeNamespace = 'http://www.w3.org/2001/XMLSchema'">
             <xsl:call-template name="types">
-              <xsl:with-param name="xstype" select="$qtype"/>
+              <xsl:with-param name="xstype" select="$elementType"/>
               <xsl:with-param name="nodeName" select="$elementName"/>
             </xsl:call-template>
           </xsl:when>
 
           <!-- if the type is a reference to a complex type defined in the current schema, use it to build the element -->
-          <xsl:when test="ancestor::xs:schema[1]/xs:complexType[@name = $elementType or @name = substring-after($elementType, ':')]">
-            <xsl:for-each select="ancestor::xs:schema[1]/xs:complexType[@name = $elementType or @name = substring-after($elementType, ':')]">
+          <xsl:when test="ancestor::xs:schema[position() = 1 and string(@targetNamespace) = $elementTypeNamespace]/xs:complexType[@name = $elementType]">
+            <xsl:for-each select="ancestor::xs:schema[1]/xs:complexType[@name = $elementType]">
               <xsl:call-template name="complexType">
                 <xsl:with-param name="includeNamespace" select="$includeNamespace"/>
                 <xsl:with-param name="commented" select="$commented"/>
@@ -653,8 +651,8 @@
           </xsl:when>
 
           <!-- if the type is a reference to a simple type defined in the current schema, use it to build the element -->
-          <xsl:when test="ancestor::xs:schema[1]/xs:simpleType[@name = $elementType or @name = substring-after($elementType, ':')]">
-            <xsl:for-each select="ancestor::xs:schema[1]/xs:simpleType[@name = $elementType or @name = substring-after($elementType, ':')]">
+         <xsl:when test="ancestor::xs:schema[position() = 1 and string(@targetNamespace) = $elementTypeNamespace]/xs:simpleType[@name = $elementType]">
+            <xsl:for-each select="ancestor::xs:schema[1]/xs:simpleType[@name = $elementType]">
               <xsl:call-template name="simpleType">
                 <xsl:with-param name="nodeName" select="$elementName"/>
               </xsl:call-template>
@@ -670,11 +668,13 @@
               <xsl:with-param name="tree" select="$tree"/>
               <xsl:with-param name="instance" select="$instance"/>
               <xsl:with-param name="nodeName" select="$elementName"/>
+              <xsl:with-param name="targetNS" select="$elementTypeNamespace"/>
             </xsl:call-template>
             <xsl:call-template name="includeSimpleTypes">
               <xsl:with-param name="typeRef" select="$elementType"/>
               <xsl:with-param name="commented" select="$commented"/>
               <xsl:with-param name="nodeName" select="$elementName"/>
+              <xsl:with-param name="targetNS" select="$elementTypeNamespace"/>
             </xsl:call-template>
           </xsl:otherwise>
         </xsl:choose>
@@ -723,12 +723,28 @@
         <!-- if there is a reference to an attribute definition, use it -->
         <xsl:when test="@ref">
 
-          <xsl:variable name="attribRef" select="@ref"/>
+          <xsl:variable name="attribRef">
+            <xsl:choose>
+              <xsl:when test="contains(@ref, ':')"><xsl:value-of select="substring-after(@ref, ':')"/></xsl:when>
+              <xsl:otherwise><xsl:value-of select="@ref"/></xsl:otherwise>
+            </xsl:choose>
+          </xsl:variable>
+          <xsl:variable name="attribRefNamespace">
+            <xsl:choose>
+              <xsl:when test="contains(@ref, ':')">
+                <xsl:variable name="prefix" select="substring-before(@ref, ':')"/>
+                <xsl:value-of select="namespace::*[name() = $prefix]"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:value-of select="$namespace"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:variable>
 
           <!-- the reference is at the current schema, or at some other included schema -->
           <xsl:choose>
-            <xsl:when test="ancestor::xs:schema[1]/xs:attribute[@name = $attribRef or @name = substring-after($attribRef, ':')]">
-              <xsl:for-each select="ancestor::xs:schema[1]/xs:attribute[@name = $attribRef or @name = substring-after($attribRef, ':')]">
+            <xsl:when test="ancestor::xs:schema[position() = 1 and string(@targetNamespace) = $attribRefNamespace]/xs:attribute[@name = $attribRef]">
+              <xsl:for-each select="ancestor::xs:schema[1]/xs:attribute[@name = $attribRef]">
                 <xsl:call-template name="attribute">
                   <xsl:with-param name="includeNamespace" select="$includeNamespace"/>
                 </xsl:call-template>
@@ -737,6 +753,7 @@
             <xsl:otherwise>
               <xsl:call-template name="includeAttributes">
                 <xsl:with-param name="attribRef" select="$attribRef"/>
+                <xsl:with-param name="targetNS" select="$attribRefNamespace"/>
               </xsl:call-template>
             </xsl:otherwise>
           </xsl:choose>
@@ -759,7 +776,7 @@
           </xsl:attribute>
         </xsl:when>
 
-        <!-- when the attribute is namespaced, check for the necessity of qaulify its name -->
+        <!-- when the attribute is namespaced, check for the necessity to qualify its name -->
         <xsl:when test="$includeNamespace">
 
           <!-- get the prefix for the namespace, as declared in the main schema -->
@@ -809,36 +826,40 @@
         <xsl:value-of select="@fixed | @default"/>
       </xsl:when>
 
-      <!-- if simply based in an XSD type, create the appropriate value -->
-      <xsl:when test="starts-with(@type, $qxs)">
-        <xsl:call-template name="types">
-          <xsl:with-param name="nodeName" select="$attributeName"/>
-        </xsl:call-template>
-      </xsl:when>
-
       <!-- if typed -->
       <xsl:when test="@type">
 
-        <!-- get a new version of the type, if it is referring a type in the XML Schema namespace -->
-        <xsl:variable name="qtype">
-          <xsl:call-template name="getLocalXS"/>
+        <xsl:variable name="elementType">
+          <xsl:choose>
+            <xsl:when test="contains(@type, ':')"><xsl:value-of select="substring-after(@type, ':')"/></xsl:when>
+            <xsl:otherwise><xsl:value-of select="@type"/></xsl:otherwise>
+          </xsl:choose>
         </xsl:variable>
-
-        <xsl:variable name="elementType" select="@type"/>
+        <xsl:variable name="elementTypeNamespace">
+          <xsl:choose>
+            <xsl:when test="contains(@type, ':')">
+              <xsl:variable name="prefix" select="substring-before(@type, ':')"/>
+              <xsl:value-of select="namespace::*[name() = $prefix]"/>
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:value-of select="$namespace"/>
+            </xsl:otherwise>
+          </xsl:choose>
+        </xsl:variable>
 
         <xsl:choose>
 
           <!-- make a new attempt: is it a XSD type? -->
-          <xsl:when test="starts-with($qtype, $qxs)">
+          <xsl:when test="$elementTypeNamespace = 'http://www.w3.org/2001/XMLSchema'">
             <xsl:call-template name="types">
-              <xsl:with-param name="xstype" select="$qtype"/>
+              <xsl:with-param name="xstype" select="$elementType"/>
               <xsl:with-param name="nodeName" select="$attributeName"/>
             </xsl:call-template>
           </xsl:when>
 
           <!-- look for the type definition at the current schema -->
-          <xsl:when test="ancestor::xs:schema[1]/xs:simpleType[@name = $elementType or @name = substring-after($elementType, ':')]">
-            <xsl:for-each select="ancestor::xs:schema[1]/xs:simpleType[@name = $elementType or @name = substring-after($elementType, ':')]">
+          <xsl:when test="ancestor::xs:schema[position() = 1 and string(@targetNamespace) = $elementTypeNamespace]/xs:simpleType[@name = $elementType]">
+            <xsl:for-each select="ancestor::xs:schema[1]/xs:simpleType[@name = $elementType]">
               <xsl:call-template name="simpleType">
                 <xsl:with-param name="nodeName" select="$attributeName"/>
               </xsl:call-template>
@@ -894,20 +915,45 @@
         </xsl:for-each>
       </xsl:when>
 
-      <!-- if there is a reference to the definition, look for it in the current schema -->
-      <xsl:when test="ancestor::xs:schema[1]/xs:attributeGroup[@name = $groupRef or @name = substring-after($groupRef, ':')]">
-        <xsl:for-each select="ancestor::xs:schema[1]/xs:attributeGroup[@name = $groupRef or @name = substring-after($groupRef, ':')]">
-          <xsl:call-template name="attributeGroup">
-            <xsl:with-param name="includeNamespace" select="$includeNamespace"/>
-          </xsl:call-template>
-        </xsl:for-each>
-      </xsl:when>
-
       <xsl:otherwise>
-        <!-- reference not found? look for it somewhere else -->
-        <xsl:call-template name="includeAttributeGroups">
-          <xsl:with-param name="typeRef" select="@ref"/>
-        </xsl:call-template>
+
+        <xsl:variable name="groupType">
+          <xsl:choose>
+            <xsl:when test="contains($groupRef, ':')"><xsl:value-of select="substring-after($groupRef, ':')"/></xsl:when>
+            <xsl:otherwise><xsl:value-of select="$groupRef"/></xsl:otherwise>
+          </xsl:choose>
+        </xsl:variable>
+        <xsl:variable name="groupTypeNamespace">
+          <xsl:choose>
+            <xsl:when test="contains($groupRef, ':')">
+              <xsl:variable name="prefix" select="substring-before($groupRef, ':')"/>
+              <xsl:value-of select="namespace::*[name() = $prefix]"/>
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:value-of select="$namespace"/>
+            </xsl:otherwise>
+          </xsl:choose>
+        </xsl:variable>
+
+        <xsl:choose>
+
+          <!-- if there is a reference to the group, look for it in the current schema -->
+          <xsl:when test="ancestor::xs:schema[position() = 1 and string(@targetNamespace) = $groupTypeNamespace]/xs:attributeGroup[@name = $groupType]">
+            <xsl:for-each select="ancestor::xs:schema[1]/xs:attributeGroup[@name = $groupType]">
+              <xsl:call-template name="attributeGroup">
+                <xsl:with-param name="includeNamespace" select="$includeNamespace"/>
+              </xsl:call-template>
+            </xsl:for-each>
+          </xsl:when>
+
+          <xsl:otherwise>
+            <!-- reference not found? look for it somewhere else -->
+            <xsl:call-template name="includeAttributeGroups">
+              <xsl:with-param name="typeRef" select="$groupRef"/>
+              <xsl:with-param name="targetNS" select="$groupTypeNamespace"/>
+            </xsl:call-template>
+          </xsl:otherwise>
+        </xsl:choose>
       </xsl:otherwise>
     </xsl:choose>
 
@@ -1076,7 +1122,7 @@
     <xsl:param name="includeNamespace"/>
     <xsl:param name="commented" select="false()"/>
     <xsl:param name="instance" select="1"/>
-    
+
     <!--
           for choices, there are 3 possible strategies:
             sequence - the nth instance samples the nth element (the first samples the first, the second samples the second...)
@@ -1147,57 +1193,49 @@
 
     <!-- hold a reference to the content, and to its identifier or type -->
     <xsl:variable name="definition" select="xs:extension | xs:restriction"/>
-    <xsl:variable name="typeRef" select="$definition/@base"/>
 
-    <!-- for the current schema, get the local prefix for the XML Schema namespace -->
-    <xsl:variable name="qtype">
-      <xsl:call-template name="getLocalXS">
-        <xsl:with-param name="dtype" select="$typeRef"/>
-      </xsl:call-template>
+    <xsl:variable name="typeRef">
+      <xsl:choose>
+        <xsl:when test="contains($definition/@base, ':')"><xsl:value-of select="substring-after($definition/@base, ':')"/></xsl:when>
+        <xsl:otherwise><xsl:value-of select="$definition/@base"/></xsl:otherwise>
+      </xsl:choose>
+    </xsl:variable>
+    <xsl:variable name="typeRefNamespace">
+      <xsl:choose>
+        <xsl:when test="contains($definition/@base, ':')">
+          <xsl:variable name="prefix" select="substring-before($definition/@base, ':')"/>
+          <xsl:value-of select="namespace::*[name() = $prefix]"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:value-of select="$namespace"/>
+        </xsl:otherwise>
+      </xsl:choose>
     </xsl:variable>
 
     <!-- try to produce a sample, if the simple types can be found or derived -->
     <xsl:choose>
 
       <!-- for direct extensions, sample the value -->
-      <xsl:when test="starts-with(xs:extension/@base, $qxs)">
+      <xsl:when test="xs:extension and $typeRefNamespace = 'http://www.w3.org/2001/XMLSchema'">
         <xsl:call-template name="types">
-          <xsl:with-param name="xstype" select="xs:extension/@base"/>
+          <xsl:with-param name="xstype" select="$typeRef"/>
           <xsl:with-param name="nodeName" select="$nodeName"/>
         </xsl:call-template>
       </xsl:when>
-      
+
       <!-- for direct restrictions, sample the restricted value -->
-      <xsl:when test="starts-with(xs:restriction/@base, $qxs)">
+      <xsl:when test="xs:restriction and $typeRefNamespace = 'http://www.w3.org/2001/XMLSchema'">
         <xsl:call-template name="restrictedTypes">
-          <xsl:with-param name="xstype" select="xs:restriction/@base"/>
+          <xsl:with-param name="xstype" select="$typeRef"/>
           <xsl:with-param name="nodeName" select="$nodeName"/>
         </xsl:call-template>
       </xsl:when>
 
-      <!-- do the same, when the type is localized to the current schema -->
-      <xsl:when test="starts-with($qtype, $qxs)">
-        <xsl:choose>
-          <xsl:when test="xs:extension">
-            <xsl:call-template name="types">
-              <xsl:with-param name="xstype" select="$qtype"/>
-              <xsl:with-param name="nodeName" select="$nodeName"/>
-            </xsl:call-template>
-          </xsl:when>
-          <xsl:otherwise>
-            <xsl:call-template name="restrictedTypes">
-              <xsl:with-param name="xstype" select="$qtype"/>
-              <xsl:with-param name="nodeName" select="$nodeName"/>
-            </xsl:call-template>
-          </xsl:otherwise>
-        </xsl:choose>
-      </xsl:when>
-
-      <!-- the reference to the extension must be located either at the current schema, or at some included one -->
+      <!-- the reference to the extension must be located either at the current schema, or at an included one -->
       <xsl:when test="xs:extension">
         <xsl:choose>
-          <xsl:when test="ancestor::xs:schema[1]/xs:complexType[@name = $typeRef or @name = substring-after($typeRef, ':')]">
-            <xsl:for-each select="ancestor::xs:schema[1]/xs:complexType[@name = $typeRef or @name = substring-after($typeRef, ':')]">
+          <xsl:when test="ancestor::xs:schema[position() = 1 and string(@targetNamespace) = $typeRefNamespace]/xs:complexType[@name = $typeRef]">
+            <xsl:for-each select="ancestor::xs:schema[1]/xs:complexType[@name = $typeRef]">
               <xsl:call-template name="complexType">
                 <xsl:with-param name="includeNamespace" select="$includeNamespace"/>
                 <xsl:with-param name="commented" select="$commented"/>
@@ -1210,11 +1248,12 @@
             <xsl:call-template name="includeSimpleTypes">
               <xsl:with-param name="typeRef" select="$typeRef"/>
               <xsl:with-param name="nodeName" select="$nodeName"/>
+              <xsl:with-param name="targetNS" select="$typeRefNamespace"/>
             </xsl:call-template>
           </xsl:otherwise>
         </xsl:choose>
       </xsl:when>
-      
+
       <!-- for a restriction, locate the reference to XML Schema types and, if found, apply the restriction to sample a value -->
       <xsl:when test="xs:restriction">
         <xsl:variable name="rtype">
@@ -1222,14 +1261,14 @@
             <xsl:with-param name="dbase" select="$typeRef"/>
           </xsl:call-template>
         </xsl:variable>
-        <xsl:if test="starts-with($rtype, $qxs)">
+        <xsl:if test="$rtype != ''">
           <xsl:call-template name="restrictedTypes">
             <xsl:with-param name="xstype" select="$rtype"/>
             <xsl:with-param name="nodeName" select="$nodeName"/>
           </xsl:call-template>
         </xsl:if>
       </xsl:when>
-      
+
     </xsl:choose>
 
     <!-- go deeper in the definition, by sampling whatever has yet to be sampled -->
@@ -1241,7 +1280,7 @@
         <xsl:with-param name="nodeName" select="$nodeName"/>                
       </xsl:call-template>
     </xsl:for-each>
-    
+
   </xsl:template>
 
   <!-- sample an XML Schema complexContent element -->
@@ -1251,7 +1290,7 @@
     <xsl:param name="includeNamespace"/>
     <xsl:param name="commented" select="false()"/>
     <xsl:param name="instance" select="1"/>
-  
+
     <xsl:for-each select="xs:extension | xs:restriction">
       <xsl:call-template name="complexType">
         <xsl:with-param name="includeNamespace" select="$includeNamespace"/>
@@ -1260,33 +1299,50 @@
         <xsl:with-param name="nodeName" select="$nodeName"/>
       </xsl:call-template>
     </xsl:for-each>
-    
+
     <xsl:variable name="definition" select="xs:extension | xs:restriction"/>
-    
+
+    <xsl:variable name="typeRef">
+      <xsl:choose>
+        <xsl:when test="contains($definition/@base, ':')"><xsl:value-of select="substring-after($definition/@base, ':')"/></xsl:when>
+        <xsl:otherwise><xsl:value-of select="$definition/@base"/></xsl:otherwise>
+      </xsl:choose>
+    </xsl:variable>
+    <xsl:variable name="typeRefNamespace">
+      <xsl:choose>
+        <xsl:when test="contains($definition/@base, ':')">
+          <xsl:variable name="prefix" select="substring-before($definition/@base, ':')"/>
+          <xsl:value-of select="namespace::*[name() = $prefix]"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:value-of select="$namespace"/>
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:variable>
+
     <xsl:choose>
-      
-      <xsl:when test="starts-with(xs:extension/@base, $qxs)">
+
+      <xsl:when test="xs:extension and $typeRefNamespace = 'http://www.w3.org/2001/XMLSchema'">
         <xsl:call-template name="types">
-          <xsl:with-param name="xstype" select="xs:extension/@base"/>
-        </xsl:call-template>
-      </xsl:when>
-      
-      <xsl:when test="starts-with(xs:restriction/@base, $qxs)">
-        <xsl:call-template name="restrictedTypes">
-          <xsl:with-param name="xstype" select="xs:restriction/@base"/>
+          <xsl:with-param name="xstype" select="$typeRef"/>
           <xsl:with-param name="nodeName" select="$nodeName"/>
         </xsl:call-template>
       </xsl:when>
-      
+
+      <xsl:when test="xs:restriction and $typeRefNamespace = 'http://www.w3.org/2001/XMLSchema'">
+        <xsl:call-template name="restrictedTypes">
+          <xsl:with-param name="xstype" select="$typeRef"/>
+          <xsl:with-param name="nodeName" select="$nodeName"/>
+        </xsl:call-template>
+      </xsl:when>
+
       <xsl:otherwise>
-        
+
         <xsl:if test="xs:extension">
-          
-          <xsl:variable name="typeRef" select="$definition/@base"/>
-          
+
           <xsl:choose>
-            <xsl:when test="ancestor::xs:schema[1]/xs:complexType[@name = $typeRef or @name = substring-after($typeRef, ':')]">
-              <xsl:for-each select="ancestor::xs:schema[1]/xs:complexType[@name = $typeRef or @name = substring-after($typeRef, ':')]">
+            <xsl:when test="ancestor::xs:schema[position() = 1 and string(@targetNamespace) = $typeRefNamespace]/xs:complexType[@name = $typeRef]">
+              <xsl:for-each select="ancestor::xs:schema[1]/xs:complexType[@name = $typeRef]">
                 <xsl:call-template name="complexType">
                   <xsl:with-param name="includeNamespace" select="$includeNamespace"/>
                   <xsl:with-param name="commented" select="$commented"/>
@@ -1305,7 +1361,7 @@
             </xsl:otherwise>
           </xsl:choose>
         </xsl:if>
-        
+
         <xsl:for-each select="$definition/xs:*">
           <xsl:call-template name="complexType">
             <xsl:with-param name="includeNamespace" select="$includeNamespace"/>
@@ -1314,9 +1370,9 @@
             <xsl:with-param name="nodeName" select="$nodeName"/>                
           </xsl:call-template>
         </xsl:for-each>
-        
+
       </xsl:otherwise>
-      
+
     </xsl:choose>
 
     <xsl:if test="@mixed = 'true'">
@@ -1328,19 +1384,27 @@
   <xsl:template name="getXSType">
     <xsl:param name="dbase" select="@base"/>
 
-    <xsl:variable name="qtype">
-      <xsl:call-template name="getLocalXS">
-        <xsl:with-param name="dtype" select="$dbase"/>
-      </xsl:call-template>
+    <xsl:variable name="xsType">
+      <xsl:choose>
+        <xsl:when test="contains($dbase, ':')"><xsl:value-of select="substring-after($dbase, ':')"/></xsl:when>
+        <xsl:otherwise><xsl:value-of select="$dbase"/></xsl:otherwise>
+      </xsl:choose>
     </xsl:variable>
-    
+    <xsl:variable name="xsTypeNamespace">
+      <xsl:choose>
+        <xsl:when test="contains($dbase, ':')">
+          <xsl:variable name="prefix" select="substring-before($dbase, ':')"/>
+          <xsl:value-of select="namespace::*[name() = $prefix]"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:value-of select="$namespace"/>
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:variable>
+
     <xsl:choose>
-      <xsl:when test="starts-with($dbase, $qxs)">
-        <xsl:value-of select="$dbase"/>
-      </xsl:when>
-      
-      <xsl:when test="starts-with($qtype, $qxs)">
-        <xsl:value-of select="$qtype"/>
+      <xsl:when test="$xsTypeNamespace = 'http://www.w3.org/2001/XMLSchema'">
+        <xsl:value-of select="$xsType"/>
       </xsl:when>
 
       <xsl:when test="ancestor::xs:schema[1]/xs:complexType[@name = $dbase]/xs:simpleContent/xs:extension">
@@ -1368,6 +1432,11 @@
     </xsl:choose>
   </xsl:template>
 
+  <!--
+    iterator* templates
+
+    repeate the sampling of nodes, based on some specified limit (from 1 to last)
+  -->
   <xsl:template name="iteratorGroups">
     <xsl:param name="nodeName"/>
     <xsl:param name="tree"/>
@@ -1375,12 +1444,28 @@
     <xsl:param name="commented" select="false()"/>
     <xsl:param name="current" select="1"/>
     <xsl:param name="last" select="1"/>
-    
-    <xsl:variable name="ref" select="@ref"/>
+
+    <xsl:variable name="gref">
+      <xsl:choose>
+        <xsl:when test="contains(@ref, ':')"><xsl:value-of select="substring-after(@ref, ':')"/></xsl:when>
+        <xsl:otherwise><xsl:value-of select="@ref"/></xsl:otherwise>
+      </xsl:choose>
+    </xsl:variable>
+    <xsl:variable name="grefNamespace">
+      <xsl:choose>
+        <xsl:when test="contains(@ref, ':')">
+          <xsl:variable name="prefix" select="substring-before(@ref, ':')"/>
+          <xsl:value-of select="namespace::*[name() = $prefix]"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:value-of select="$namespace"/>
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:variable>
 
     <xsl:choose>
-      <xsl:when test="ancestor::xs:schema[1]/xs:group[@name = $ref or @name = substring($ref, ':')]">
-        <xsl:for-each select="ancestor::xs:schema[1]/xs:group[@name = $ref or @name = substring($ref, ':')]/xs:*">
+      <xsl:when test="ancestor::xs:schema[position() = 1 and string(@targetNamespace) = $grefNamespace]/xs:group[@name = $gref]">
+        <xsl:for-each select="ancestor::xs:schema[1]/xs:group[@name = $gref]/xs:*">
           <xsl:call-template name="complexType">
             <xsl:with-param name="includeNamespace" select="$includeNamespace"/>
             <xsl:with-param name="commented" select="$commented"/>
@@ -1392,11 +1477,12 @@
       </xsl:when>
       <xsl:otherwise>
         <xsl:call-template name="includeGroups">
-          <xsl:with-param name="typeRef" select="$ref"/>
+          <xsl:with-param name="typeRef" select="$gref"/>
           <xsl:with-param name="commented" select="$commented"/>
           <xsl:with-param name="tree" select="$tree"/>
           <xsl:with-param name="instance" select="$current"/>
           <xsl:with-param name="nodeName" select="$nodeName"/>
+          <xsl:with-param name="targetNS" select="$grefNamespace"/>
         </xsl:call-template>
       </xsl:otherwise>
     </xsl:choose>
@@ -1458,7 +1544,7 @@
       <xsl:with-param name="instance" select="$current"/>
       <xsl:with-param name="nodeName" select="$nodeName"/>
     </xsl:call-template>
-    
+
     <xsl:if test="$current &lt; $last and (@maxOccurs = 'unbounded' or $current &lt; @maxOccurs)">
       <xsl:call-template name="iteratorChoices">
         <xsl:with-param name="last" select="$last"/>
@@ -1469,9 +1555,10 @@
         <xsl:with-param name="nodeName" select="$nodeName"/>
       </xsl:call-template>
     </xsl:if>
-    
+
   </xsl:template>
 
+  <!-- samples a simpleType definition -->
   <xsl:template name="simpleType">
     <xsl:param name="nodeName" select="@name"/>
 
@@ -1486,7 +1573,7 @@
 
   </xsl:template>
 
-  <!-- get the actual element/attribute contents, based on its type -->
+  <!-- get the actual element/attribute contents, based on its XS type -->
   <xsl:template name="types">
     <xsl:param name="xstype" select="@type"/>
     <xsl:param name="nodeName" select="@name"/>
@@ -1554,7 +1641,7 @@
       </xsl:otherwise>
     </xsl:choose>
   </xsl:template>
-  
+
   <xsl:template name="date">
     <xsl:param name="base"/>
     <xsl:choose>
@@ -1604,7 +1691,12 @@
     <xsl:param name="xstype" select="xs:restriction/@base"/>
 
     <xsl:variable name="definition" select="xs:restriction"/>
-    <xsl:variable name="base" select="$xstype"/>
+    <xsl:variable name="base">
+      <xsl:choose>
+        <xsl:when test="contains($xstype, ':')"><xsl:value-of select="substring-after($xstype, ':')"/></xsl:when>
+        <xsl:otherwise><xsl:value-of select="$xstype"/></xsl:otherwise>
+      </xsl:choose>
+    </xsl:variable>
 
     <xsl:choose>
       <xsl:when test="contains($xsGroupString, $base)">
