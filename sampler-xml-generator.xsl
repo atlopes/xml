@@ -396,7 +396,6 @@
           <xsl:when test="xs:simpleType[@name = $typeRef and $includeNamespace = $targetNS]">
             <xsl:for-each select="xs:simpleType[@name = $typeRef and $includeNamespace = $targetNS]">
               <xsl:call-template name="simpleType">
-                <xsl:with-param name="includeNamespace" select="$includeNamespace"/>
                 <xsl:with-param name="nodeName" select="$nodeName"/>
               </xsl:call-template>
             </xsl:for-each>
@@ -655,6 +654,7 @@
             <xsl:for-each select="ancestor::xs:schema[1]/xs:simpleType[@name = $elementType]">
               <xsl:call-template name="simpleType">
                 <xsl:with-param name="nodeName" select="$elementName"/>
+                <xsl:with-param name="instance" select="$instance"/>
               </xsl:call-template>
             </xsl:for-each>
           </xsl:when>
@@ -697,6 +697,7 @@
         <xsl:for-each select="xs:simpleType">
           <xsl:call-template name="simpleType">
             <xsl:with-param name="nodeName" select="$elementName"/>
+            <xsl:with-param name="instance" select="$instance"/>
           </xsl:call-template>
           
         </xsl:for-each>
@@ -1108,6 +1109,7 @@
           <xsl:with-param name="tree" select="$tree"/>
           <xsl:with-param name="includeNamespace" select="$includeNamespace"/>
           <xsl:with-param name="commented" select="$commented"/>
+          <xsl:with-param name="instance" select="$instance"/>
         </xsl:call-template>
       </xsl:when>
 
@@ -1432,6 +1434,147 @@
     </xsl:choose>
   </xsl:template>
 
+  <xsl:template name="unionMembers">
+    <xsl:param name="soFar" select="1"/>
+    <xsl:param name="nodeName"/>
+
+    <xsl:call-template name="unionMembersInList">
+      <xsl:with-param name="soFar" select="$soFar"/>
+      <xsl:with-param name="nodeName" select="$nodeName"/>
+    </xsl:call-template>
+
+  </xsl:template>
+
+  <xsl:template name="unionMembersInList">
+    <xsl:param name="tokenList" select="xs:union/@memberTypes"/> 
+    <xsl:param name="soFar" select="1"/>
+    <xsl:param name="nodeName"/>
+
+    <xsl:variable name="normList" select="concat(normalize-space($tokenList), ' ')"/>
+    <xsl:variable name="thisToken" select="substring-before($normList, ' ')"/>
+    <xsl:variable name="nextTokens" select="substring-after($normList, ' ')"/>
+
+    <xsl:variable name="typeRef">
+      <xsl:choose>
+        <xsl:when test="contains($thisToken, ':')"><xsl:value-of select="substring-after($thisToken, ':')"/></xsl:when>
+        <xsl:otherwise><xsl:value-of select="$thisToken"/></xsl:otherwise>
+      </xsl:choose>
+    </xsl:variable>
+    <xsl:variable name="typeRefNamespace">
+      <xsl:choose>
+        <xsl:when test="contains($thisToken, ':')">
+          <xsl:variable name="prefix" select="substring-before($thisToken, ':')"/>
+          <xsl:value-of select="namespace::*[name() = $prefix]"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:value-of select="$namespace"/>
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:variable>
+    
+    <xsl:choose>
+
+      <!-- reached the end, check now the children -->
+      <xsl:when test="$thisToken = ''">
+        <xsl:call-template name="unionChildren">
+          <xsl:with-param name="soFar" select="$soFar"/>
+          <xsl:with-param name="nodeName" select="$nodeName"/>
+        </xsl:call-template>
+      </xsl:when>
+
+      <!-- for builtin types, decrement the count, if not at the targeted member -->
+      <xsl:when test="$typeRefNamespace = 'http://www.w3.org/2001/XMLSchema'">
+        <xsl:choose>
+          <xsl:when test="$soFar &lt;= 1">
+            <xsl:call-template name="types">
+              <xsl:with-param name="xstype" select="$typeRef"/>
+              <xsl:with-param name="nodeName" select="$nodeName"/>
+            </xsl:call-template>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:call-template name="unionMembersInList">
+              <xsl:with-param name="soFar" select="number($soFar) - 1"/>
+              <xsl:with-param name="tokenList" select="$nextTokens"/>
+              <xsl:with-param name="nodeName" select="$nodeName"/>
+            </xsl:call-template>
+          </xsl:otherwise>
+        </xsl:choose>
+      </xsl:when>
+
+      <!-- otherwise, start by locating the type -->
+      <xsl:when test="ancestor::xs:schema[position() = 1 and string(@targetNamespace) = $typeRefNamespace]/xs:simpleType[@name = $typeRef]">
+        <xsl:for-each select="ancestor::xs:schema[1]/xs:simpleType[@name = $typeRef]">
+          <xsl:choose>
+            <xsl:when test="$soFar &lt;= 1">
+              <xsl:call-template name="simpleType">
+                <xsl:with-param name="nodeName" select="$nodeName"/>
+              </xsl:call-template>
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:call-template name="unionMembersInList">
+                <xsl:with-param name="soFar" select="number($soFar) - 1"/>
+                <xsl:with-param name="tokenList" select="$nextTokens"/>
+                <xsl:with-param name="nodeName" select="$nodeName"/>
+              </xsl:call-template>
+            </xsl:otherwise>
+          </xsl:choose>
+        </xsl:for-each>
+
+      </xsl:when>
+
+      <xsl:otherwise>
+        <xsl:call-template name="simpleType">
+          <xsl:with-param name="instance" select="number($soFar) - 1"/>
+          <xsl:with-param name="nodeName" select="$nodeName"/>
+          <xsl:with-param name="unionCycle" select="true()"/>
+        </xsl:call-template>
+      </xsl:otherwise>
+
+    </xsl:choose>
+
+  </xsl:template>
+
+  <xsl:template name="unionChildren">
+    <xsl:param name="positionMark" select="1"/> 
+    <xsl:param name="soFar" select="1"/>
+    <xsl:param name="nodeName"/>
+    
+    <xsl:choose>
+      
+      <xsl:when test="$positionMark &lt;= count(xs:union/xs:simpleType)">
+
+        <xsl:for-each select="xs:union/xs:simpleType[position() = $positionMark]">
+          
+          <xsl:choose>
+            <xsl:when test="$soFar &lt;= 1">
+              <xsl:call-template name="simpleType">
+                <xsl:with-param name="nodeName" select="$nodeName"/>
+              </xsl:call-template>
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:call-template name="unionChildren">
+                <xsl:with-param name="positionMark" select="$positionMark + 1"/>
+                <xsl:with-param name="soFar" select="number($soFar) - 1"/>
+                <xsl:with-param name="nodeName" select="$nodeName"/>
+              </xsl:call-template>
+            </xsl:otherwise>
+          </xsl:choose>
+        </xsl:for-each>
+      </xsl:when>
+      
+      <xsl:otherwise>
+        <xsl:if test="$soFar &gt;= 1">
+          <xsl:call-template name="simpleType">
+            <xsl:with-param name="instance" select="$soFar"/>
+            <xsl:with-param name="nodeName" select="$nodeName"/>
+            <xsl:with-param name="unionCycle" select="true()"/>
+          </xsl:call-template>
+        </xsl:if>
+      </xsl:otherwise>
+    </xsl:choose>
+    
+  </xsl:template>
+
   <!--
     iterator* templates
 
@@ -1561,12 +1704,29 @@
   <!-- samples a simpleType definition -->
   <xsl:template name="simpleType">
     <xsl:param name="nodeName" select="@name"/>
+    <xsl:param name="instance" select="1"/>
+    <xsl:param name="unionCycle" select="false()"/>
 
     <xsl:choose>
 
-      <xsl:when test="xs:restriction">
+      <xsl:when test="xs:restriction and (not($unionCycle) or $instance &lt;= 1)">
         <xsl:call-template name="restrictedTypes">
           <xsl:with-param name="nodeName" select="$nodeName"/>
+        </xsl:call-template>
+      </xsl:when>
+
+      <xsl:when test="xs:restriction">
+        <xsl:call-template name="simpleType">
+          <xsl:with-param name="unionCycle" select="$unionCycle"/>
+          <xsl:with-param name="instance" select="number($instance) - 1"/>
+          <xsl:with-param name="nodeName" select="$nodeName"/>
+        </xsl:call-template>
+      </xsl:when>
+
+      <xsl:when test="xs:union">
+        <xsl:call-template name="unionMembers">
+          <xsl:with-param name="nodeName" select="$nodeName"/>
+          <xsl:with-param name="soFar" select="$instance"/>
         </xsl:call-template>
       </xsl:when>
     </xsl:choose>
@@ -1724,6 +1884,13 @@
       <xsl:when test="@type = $xsAnyURI">
         <xsl:call-template name="URI"/>
       </xsl:when>
+      <xsl:otherwise>
+        <xsl:call-template name="restrictedString">
+          <xsl:with-param name="definition" select="$definition"/>
+          <xsl:with-param name="base" select="$base"/>
+          <xsl:with-param name="nodeName" select="$nodeName"/>
+        </xsl:call-template>
+      </xsl:otherwise>
     </xsl:choose>
   </xsl:template>
 
