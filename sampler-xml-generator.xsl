@@ -179,14 +179,31 @@
   <!--
     the main template: locate the root element, as given by the parameters or default, and start the sampling from there
   -->
-  <xsl:template match="/">
+  <xsl:template match="/" name="root">
     <xsl:choose>
+      <!-- an element is found in the current schema -->
       <xsl:when test="//xs:schema[@targetNamespace = $sampleNamespace or ($sampleNamespace = '' and position() = 1)]/xs:element[@name = $sampleRootElement]">
         <xsl:for-each select="//xs:schema[@targetNamespace = $sampleNamespace or ($sampleNamespace = '' and position() = 1)]/xs:element[@name = $sampleRootElement]">
           <xsl:call-template name="element">
             <xsl:with-param name="root" select="true()"/>
             <xsl:with-param name="tree" select="''"/>
           </xsl:call-template>
+        </xsl:for-each>
+      </xsl:when>
+      <!-- in case there are no elements in the current schema, look for them in the imported schemas -->
+      <xsl:when test="not(//xs:schema[@targetNamespace = $sampleNamespace or ($sampleNamespace = '' and position() = 1)]/xs:element)">
+        <xsl:for-each select="//xs:schema[@targetNamespace = $sampleNamespace or ($sampleNamespace = '' and position() = 1)]/xs:import">
+          <xsl:for-each select="document(@schemaLocation)">
+            <xsl:call-template name="root" />
+          </xsl:for-each>
+        </xsl:for-each>
+      </xsl:when>
+      <!-- if an element was given, and not found, and there are imported schemas, look for the element in these schemas -->
+      <xsl:when test="$sampleRootElement != '' and //xs:schema[@targetNamespace = $sampleNamespace or ($sampleNamespace = '' and position() = 1)]/xs:import">
+        <xsl:for-each select="//xs:schema[@targetNamespace = $sampleNamespace or ($sampleNamespace = '' and position() = 1)]/xs:import">
+          <xsl:for-each select="document(@schemaLocation)">
+            <xsl:call-template name="root" />
+          </xsl:for-each>
         </xsl:for-each>
       </xsl:when>
       <xsl:otherwise>
