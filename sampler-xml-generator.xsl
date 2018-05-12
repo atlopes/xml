@@ -94,9 +94,48 @@
 
   <!-- fetch and store the target namespace of the main schema -->
   <xsl:variable name="namespace">
-    <xsl:value-of select="//xs:schema[@targetNamespace = $sampleNamespace or ($sampleNamespace = '' and position() = 1)]/@targetNamespace"/>
+    <xsl:choose>
+      <xsl:when test="$sampleNamespace = ''">
+        <xsl:call-template name="getTargetNamespace"/>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:value-of select="$sampleNamespace"/>
+      </xsl:otherwise>
+    </xsl:choose>
   </xsl:variable>
 
+  <!--
+    locate the target namespace when not given as a sampler argument
+  -->
+  <xsl:template name="getTargetNamespace">
+    <xsl:choose>
+      <!-- the target element is found in the current schema -->
+      <xsl:when test="//xs:schema[1]/xs:element[@name = $sampleRootElement]">
+        <xsl:value-of select="//xs:schema[1]/@targetNamespace"/>
+      </xsl:when>
+      <!-- in case there are no elements in the current schema, check for target namespace in imported schemas -->
+      <xsl:when test="not(//xs:schema[1]/xs:element)">
+        <xsl:for-each select="//xs:schema[1]/xs:import">
+          <xsl:for-each select="document(@schemaLocation)">
+            <xsl:call-template name="getTargetNamespace" />
+          </xsl:for-each>
+        </xsl:for-each>
+      </xsl:when>
+      <!-- if an element was given, and not found, and there are imported schemas, look for the element in these schemas -->
+      <xsl:when test="$sampleRootElement != '' and //xs:schema[1]/xs:import">
+        <xsl:for-each select="//xs:schema[1]/xs:import">
+          <xsl:for-each select="document(@schemaLocation)">
+            <xsl:call-template name="getTargetNamespace" />
+          </xsl:for-each>
+        </xsl:for-each>
+      </xsl:when>
+      <xsl:otherwise>
+        <!-- if the root element was not given, set the target namespace to the first schema's -->
+        <xsl:value-of select="//xs:schema[1]/@targetNamespace"/>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+  
   <!-- get the prefix associated to a particular namespace -->
   <xsl:template name="getPrefix">
     <xsl:param name="namespace"/>
