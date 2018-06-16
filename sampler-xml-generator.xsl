@@ -96,7 +96,10 @@
   <xsl:variable name="namespace">
     <xsl:choose>
       <xsl:when test="$sampleNamespace = ''">
-        <xsl:call-template name="getTargetNamespace"/>
+        <xsl:variable name="tns">
+          <xsl:call-template name="getTargetNamespace"/>
+        </xsl:variable>
+        <xsl:value-of select="substring-before($tns, '&#x09;')"/>
       </xsl:when>
       <xsl:otherwise>
         <xsl:value-of select="$sampleNamespace"/>
@@ -111,7 +114,7 @@
     <xsl:choose>
       <!-- the target element is found in the current schema -->
       <xsl:when test="//xs:schema[1]/xs:element[@name = $sampleRootElement]">
-        <xsl:value-of select="//xs:schema[1]/@targetNamespace"/>
+        <xsl:value-of select="concat(//xs:schema[1]/@targetNamespace, '&#x09;')"/>
       </xsl:when>
       <!-- in case there are no elements in the current schema, check for target namespace in imported schemas -->
       <xsl:when test="not(//xs:schema[1]/xs:element)">
@@ -131,7 +134,7 @@
       </xsl:when>
       <xsl:otherwise>
         <!-- if the root element was not given, set the target namespace to the first schema's -->
-        <xsl:value-of select="//xs:schema[1]/@targetNamespace"/>
+        <xsl:value-of select="concat(//xs:schema[1]/@targetNamespace, '&#x09;')"/>
       </xsl:otherwise>
     </xsl:choose>
   </xsl:template>
@@ -219,40 +222,86 @@
     the main template: locate the root element, as given by the parameters or default, and start the sampling from there
   -->
   <xsl:template match="/" name="root">
+
     <xsl:choose>
-      <!-- an element is found in the current schema -->
-      <xsl:when test="//xs:schema[@targetNamespace = $sampleNamespace or ($sampleNamespace = '' and position() = 1)]/xs:element[@name = $sampleRootElement]">
-        <xsl:for-each select="//xs:schema[@targetNamespace = $sampleNamespace or ($sampleNamespace = '' and position() = 1)]/xs:element[@name = $sampleRootElement]">
+
+      <!-- the given root element is found in one of the currently visible schemas -->
+      <xsl:when test="//xs:schema[@targetNamespace = $sampleNamespace or $sampleNamespace = '']/xs:element[@name = $sampleRootElement]">
+        <xsl:for-each select="(//xs:schema[@targetNamespace = $sampleNamespace or $sampleNamespace = '']/xs:element[@name = $sampleRootElement])[1]">
           <xsl:call-template name="element">
             <xsl:with-param name="root" select="true()"/>
             <xsl:with-param name="tree" select="''"/>
           </xsl:call-template>
         </xsl:for-each>
       </xsl:when>
-      <!-- in case there are no elements in the current schema, look for them in the imported schemas -->
-      <xsl:when test="not(//xs:schema[@targetNamespace = $sampleNamespace or ($sampleNamespace = '' and position() = 1)]/xs:element)">
-        <xsl:for-each select="//xs:schema[@targetNamespace = $sampleNamespace or ($sampleNamespace = '' and position() = 1)]/xs:import">
-          <xsl:for-each select="document(@schemaLocation)">
-            <xsl:call-template name="root" />
-          </xsl:for-each>
+
+      <!-- there is no given root element, and there is at least one element in the currently visible schemas -->
+      <xsl:when test="$sampleRootElement = '' and //xs:schema[@targetNamespace = $sampleNamespace or $sampleNamespace = '']/xs:element[1]">
+        <xsl:for-each select="(//xs:schema[@targetNamespace = $sampleNamespace or $sampleNamespace = '']/xs:element[1])[1]">
+          <xsl:call-template name="element">
+            <xsl:with-param name="root" select="true()"/>
+            <xsl:with-param name="tree" select="''"/>
+          </xsl:call-template>
         </xsl:for-each>
       </xsl:when>
-      <!-- if an element was given, and not found, and there are imported schemas, look for the element in these schemas -->
-      <xsl:when test="$sampleRootElement != '' and //xs:schema[@targetNamespace = $sampleNamespace or ($sampleNamespace = '' and position() = 1)]/xs:import">
-        <xsl:for-each select="//xs:schema[@targetNamespace = $sampleNamespace or ($sampleNamespace = '' and position() = 1)]/xs:import">
-          <xsl:for-each select="document(@schemaLocation)">
-            <xsl:call-template name="root" />
-          </xsl:for-each>
-        </xsl:for-each>
-      </xsl:when>
+
       <xsl:otherwise>
-        <!-- if the root element was not given, use the first defined element -->
-        <xsl:for-each select="//xs:schema[@targetNamespace = $sampleNamespace or ($sampleNamespace = '' and position() = 1)]/xs:element[1]">
+        <!-- in case there are no elements in the current schemas, look for them in the imported schemas -->
+        <xsl:call-template name="findInImported">
+          <xsl:with-param name="schemas" select="//xs:schema/xs:import"/>
+        </xsl:call-template>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+
+  <!-- when the root element is not found in the current visible schema(s), the tree of imported schemas may be fully
+        traversed to look for it -->
+  <xsl:template name="findInImported">
+    <!-- the node list of imported schemas, at a given level -->
+    <xsl:param name="schemas" />
+    <!-- an iterator to go through the node list -->
+    <xsl:param name="index" select="1"/>
+
+    <!-- a convenient pointer to an imported schema -->
+    <xsl:variable name="schema" select="document($schemas[$index]/@schemaLocation)/xs:schema"/>
+
+    <xsl:choose>
+
+      <!-- found a given root element? sample it and stop the imported schemas search -->
+      <xsl:when test="$schema[@targetNamespace = $sampleNamespace or $sampleNamespace = '']/xs:element[@name = $sampleRootElement]">
+        <xsl:for-each select="($schema[@targetNamespace = $sampleNamespace or $sampleNamespace = '']/xs:element[@name = $sampleRootElement])[1]">
           <xsl:call-template name="element">
             <xsl:with-param name="root" select="true()"/>
             <xsl:with-param name="tree" select="''"/>
           </xsl:call-template>
         </xsl:for-each>
+      </xsl:when>
+
+      <!-- when no given root element, and found an element definition? sample it and stop -->
+      <xsl:when test="$sampleRootElement = '' and $schema[@targetNamespace = $sampleNamespace or $sampleNamespace = '']/xs:element[1]">
+        <xsl:for-each select="($schema[@targetNamespace = $sampleNamespace or $sampleNamespace = '']/xs:element[1])[1]">
+          <xsl:call-template name="element">
+            <xsl:with-param name="root" select="true()"/>
+            <xsl:with-param name="tree" select="''"/>
+          </xsl:call-template>
+        </xsl:for-each>
+      </xsl:when>
+
+      <!-- if there are other schemas imported by the one we are investigating, go deeper in the tree -->
+      <xsl:when test="$schema/xs:import">
+        <xsl:call-template name="findInImported">
+          <xsl:with-param name="schemas" select="$schema/xs:import"/>
+        </xsl:call-template>
+      </xsl:when>
+
+      <xsl:otherwise>
+        <!-- check the new schema in the node list, until the list is exhausted -->
+        <xsl:if test="$index &lt; count($schemas)">
+          <xsl:call-template name="findInImported">
+            <xsl:with-param name="schemas" select="$schemas"/>
+            <xsl:with-param name="index" select="$index + 1"/>
+          </xsl:call-template>
+        </xsl:if>
       </xsl:otherwise>
     </xsl:choose>
   </xsl:template>
