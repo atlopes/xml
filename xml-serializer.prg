@@ -324,7 +324,13 @@ DEFINE CLASS XMLSerializer AS Custom
 
 			ELSE
 
-				m.SourceTree = m.SourceObject.childNodes()
+				* serialize nodes starting at the root, if a DOMDocument
+				IF ISNULL(m.SourceObject.ownerDocument)
+					m.SourceTree = m.SourceObject.childNodes()
+				* otherwise, serialize the XML fragment at the context point of the tree
+				ELSE
+					m.SourceTree = m.SourceObject.selectNodes(".")
+				ENDIF
 
 			ENDIF
 

@@ -595,8 +595,14 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 	HIDDEN FUNCTION _canonText (Source AS String)
 
 		LOCAL Canon AS String
+
+		IF VARTYPE(m.Source) == "O"
+			m.Canon = m.Source.xmltext.item(1)
+		ELSE
+			m.Canon = m.Source
+		ENDIF
 		
-		m.Canon =  STRTRAN(STRTRAN(STRTRAN(m.Source, '&', '&' + 'amp;'), '<', '&' + 'lt;'), '>', '&' + 'gt;')
+		m.Canon =  STRTRAN(STRTRAN(STRTRAN(m.Canon, '&', '&' + 'amp;'), '<', '&' + 'lt;'), '>', '&' + 'gt;')
 		IF This.Trimmer
 			m.Canon = ALLTRIM(m.Canon, 1, " ", CHR(10), CHR(13), CHR(9))
 		ENDIF
