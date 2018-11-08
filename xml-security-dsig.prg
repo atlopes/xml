@@ -570,6 +570,11 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 			m.Transforms = .NULL.
 		ENDIF
 
+		STORE .NULL. TO m.Prefix, m.Prefix_NS
+		m.Id_Name = "Id"
+		m.Overwrite_Id = .T.
+		m.Force_URI = .F.
+
 		IF !ISNULL(m.Options)
 			IF m.Options.GetKey("Prefix") != 0
 				m.Prefix = EVL(m.Options("Prefix"), .NULL.)
@@ -586,11 +591,6 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 			IF m.Options.GetKey("ForceURI") != 0
 				m.Force_URI= m.Options("ForceURI")
 			ENDIF
-		ELSE
-			STORE .NULL. TO m.Prefix, m.Prefix_NS
-			m.Id_Name = "Id"
-			m.Overwrite_Id = .T.
-			m.Force_URI = .F.
 		ENDIF
 
 		LOCAL AttName AS String
