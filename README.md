@@ -23,7 +23,7 @@ Status: usable.
 
 ## In alpha-development
 
-**XMLSecurity** set of classes to sign, encrypt, and secure XML documents.
+**[XMLSecurity](xml-security.md "XMLSecurity")** set of classes to sign, encrypt, and secure XML documents.
 
 ## Ideas for the future
 
