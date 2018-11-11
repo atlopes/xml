@@ -17,6 +17,8 @@ Part of [VFP XML library set](README.md "VFP XML library set").
 See examples at the tests folder:
 
 - [Sign an XML document - basic](tests/sec/test-hw-sign.prg "test-hw-sign.prg")
+- [Sign an XML element](tests/sec/test-hw-child-sign.prg "test-hw-child-sign.prg")
+- [Sign an XML element with its own Id](tests/sec/test-hw-child-id-sign.prg "test-hw-child-id-sign.prg")
 
 ## Components
 
@@ -32,4 +34,6 @@ See examples at the tests folder:
 - [XMLCanonicalizer](xml-canonicalizer.md "XMLCanonicalizer")
 - [GUID](https://www.bitbucket.org/atlopes/GUID "GUID")
 - [URL](https://www.bitbucket.org/atlopes/url "URL")
+
+XMLSecurity requires a crypto library to provide the encryption and hashing functions. For the moment, the RSA and Cert components of Chilkat are being used, but in the future other providers may be added to the set.
 

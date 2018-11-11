@@ -600,15 +600,15 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 
 		m.RefNode = This.CreateNewSignNode("Reference")
 		m.sInfoNode.appendChild(m.RefNode)
-*!*	        if (! $node instanceof DOMDocument) {
-		IF !(TYPE("m.Node.documentElement") == "O")		&& !ISNULL(m.Node.ownerDocument) ?
+
+		IF !(TYPE("m.Node.documentElement") == "O")
 			m.URI = ""
 			IF !m.Overwrite_Id
-				m.URI = m.Node.getAttribute(IIF(EMPTY(m.Prefix_NS), "", m.Prefix_NS + ":") + m.Id_Name)
+				m.URI = m.Node.getAttribute(m.AttName)
 			ENDIF
 			IF EMPTY(m.URI)
 				m.URI = This.GenerateGUID()
-				m.Node.setAttribute(IIF(EMPTY(m.Prefix_NS), "", m.Prefix_NS + ":") + m.Id_Name, m.URI)
+				m.Node.setAttribute(m.AttName, m.URI)
 			ENDIF
 			m.RefNode.setAttribute("URI", "#" + m.URI)
 		ELSE
@@ -681,6 +681,10 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 	FUNCTION AddReference (Node AS MSXML2.IXMLDOMElement, Algorithm AS String, Transforms AS Collection, Options AS Collection)
 
 		LOCAL Nodes AS MSXML2.IXMLDOMNodeList
+
+		IF TYPE("m.Node.nodeType") != "N" OR !INLIST(m.Node.nodeType, 1, 9)
+			ERROR "Node reference must be a document or an element." 
+		ENDIF
 	
 		m.Nodes = This.SigNode.selectNodes(This.SearchPrefix + ":SignedInfo")
 		IF m.Nodes.length > 0
