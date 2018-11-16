@@ -17,7 +17,6 @@ DO LOCFILE("xml-security-lib-chilkat.prg")
 LOCAL DSig AS XMLSecurityDSig
 LOCAL SKey AS XMLSecurityKey
 LOCAL KLib AS XMLSecurityLib
-LOCAL Options AS Collection
 LOCAL XML AS MSXML2.DOMDocument60
 
 * load the XML document that will be signed
@@ -45,12 +44,9 @@ m.DSig.SetXMLkey(m.SKey)
 * set a canonicalization method that will normalize the document and the signature
 m.DSig.SetCanonicalMethod(EXC_C14N)
 
-* the reference will contain a URI (an empty one)
-m.Options = CREATEOBJECT("Collection")
-m.Options.Add(.T., "ForceURI")
-
 * add a reference to the signed object (in this case, the entire document)
-m.DSig.AddReference(m.XML, HASH_SHA1, "http://www.w3.org/2000/09/xmldsig#enveloped-signature", m.Options)
+* the reference will contain a URI (an empty one)
+m.DSig.AddReference(m.XML, HASH_SHA1, "http://www.w3.org/2000/09/xmldsig#enveloped-signature", "ForceURI=.T.")
 
 * now sign it
 m.DSig.Sign()

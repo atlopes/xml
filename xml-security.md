@@ -25,8 +25,8 @@ See examples at the tests folder:
 - [XMLSecurity header file](xml-security.h "xml-security.h")
 - [XMLSecurityLib, a class to perform encryption and hashing operations](xml-security-lib.prg "xml-security-lib.prg")
 - [XMLSecurityLibChilkat, a XMLSecurityLib subclass that interfaces to Chilkat RSA and Cert components](xml-security-lib-chilkat.prg "xml-security-lib-chilkat.prg")
-- [XMLSecurityKey, a class to manage key related operations)](xml-security-enc.prg "xml-security-enc.prg")
-- [XMLSecurityDSig, a class to sign XML documents and fragments)](xml-security-enc.prg "xml-security-enc.prg")
+- [XMLSecurityKey, a class to manage key related operations](xml-security-key.prg "xml-security-key.prg")
+- [XMLSecurityDSig, a class to sign XML documents and fragments](xml-security-dsig.prg "xml-security-dsig.prg")
 - [XMLSecEnc, a class to encrypt XML data)](xml-security-enc.prg "xml-security-enc.prg")
 
 ## Dependencies

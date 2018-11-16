@@ -133,11 +133,13 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 			m.Nodes = m.Doc.selectNodes(".//" + This.SearchPrefix + ":Signature")
 			This.SigNode = IIF(m.Nodes.length > m.Pos, m.Nodes.item(m.Pos), .NULL.)
 
-			RETURN This.SigNode
+		ELSE
+
+			This.SigNode = .NULL.
 
 		ENDIF
 		
-		RETURN .NULL.
+		RETURN This.SigNode
 
 	ENDFUNC
 
@@ -554,7 +556,7 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 
 	ENDFUNC
 
-	HIDDEN FUNCTION _AddReference (sInfoNode AS MSXML2.IXMLDOMElement, Node AS MSXML2.IXMLDOMElement, Algorithm AS String, Transforms AS Collection, Options AS Collection)
+	HIDDEN FUNCTION _AddReference (sInfoNode AS MSXML2.IXMLDOMElement, Node AS MSXML2.IXMLDOMElement, Algorithm AS String, Transforms AS Collection, Options AS CollectionOrString)
 
 		LOCAL Prefix AS String
 		LOCAL Prefix_NS AS String
@@ -563,35 +565,15 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 		LOCAL Force_URI AS Boolean
 		LOCAL URI AS String
 
-		IF PCOUNT() < 5
-			m.Options = .NULL.
-		ENDIF
 		IF PCOUNT() < 4
 			m.Transforms = .NULL.
 		ENDIF
 
-		STORE .NULL. TO m.Prefix, m.Prefix_NS
-		m.Id_Name = "Id"
-		m.Overwrite_Id = .T.
-		m.Force_URI = .F.
-
-		IF !ISNULL(m.Options)
-			IF m.Options.GetKey("Prefix") != 0
-				m.Prefix = EVL(m.Options("Prefix"), .NULL.)
-			ENDIF
-			IF m.Options.GetKey("PrefixNS") != 0
-				m.Prefix_NS = EVL(m.Options("PrefixNS"), .NULL.)
-			ENDIF
-			IF m.Options.GetKey("IdName") != 0
-				m.Id_Name = EVL(m.Options("IdName"), "Id")
-			ENDIF
-			IF m.Options.GetKey("OverwriteId") != 0
-				m.Overwrite_Id = m.Options("OverwriteId")
-			ENDIF
-			IF m.Options.GetKey("ForceURI") != 0
-				m.Force_URI= m.Options("ForceURI")
-			ENDIF
-		ENDIF
+		m.Prefix = This.GetOption(m.Options, "Prefix", .NULL.)
+		m.Prefix_NS = This.GetOption(m.Options, "PrefixNS", .NULL.)
+		m.Id_Name = This.GetOption(m.Options, "IdName", "Id")
+		m.Overwrite_Id = This.GetOption(m.Options, "OverwriteId", .T., .T.)
+		m.Force_URI = This.GetOption(m.Options, "ForceURI", .F., .T.)
 
 		LOCAL AttName AS String
 		LOCAL RefNode AS MSXML2.IXMLDOMElement
@@ -678,7 +660,7 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 
 	ENDFUNC
 
-	FUNCTION AddReference (Node AS MSXML2.IXMLDOMElement, Algorithm AS String, Transforms AS Collection, Options AS Collection)
+	FUNCTION AddReference (Node AS MSXML2.IXMLDOMElement, Algorithm AS String, Transforms AS Collection, Options AS CollectionOrString)
 
 		LOCAL Nodes AS MSXML2.IXMLDOMNodeList
 
@@ -806,11 +788,11 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 
 	ENDFUNC
 
-	FUNCTION AddX509Cert (Cert AS String, isPEMFormat AS Boolean, isURL AS Boolean, Options AS Collection)
+	FUNCTION AddX509Cert (Cert AS String, isPEMFormat AS Boolean, isURL AS Boolean, Options AS CollectionOrString)
 		This._AddX509Cert(This.SigNode, m.Cert, m.isPEMFormat, m.isURL, m.Options)
 	ENDFUNC
 
-	HIDDEN FUNCTION _AddX509Cert (parentRef AS MSXML2.IXMLDOMElement, Cert AS String, isPEMFormat AS Boolean, isURL AS Boolean, Options AS Collection)
+	HIDDEN FUNCTION _AddX509Cert (parentRef AS MSXML2.IXMLDOMElement, Cert AS String, isPEMFormat AS Boolean, isURL AS Boolean, Options AS CollectionOrString)
 
 		LOCAL Certificate AS String
 
@@ -891,14 +873,8 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 		
 		STORE .F. TO m.IssuerSerial, m.SubjectName
 
-		IF TYPE("m.Options") == "O" AND !ISNULL(m.Options)
-			IF m.Options.GetKey("IssuerSerial") != 0
-				m.IssuerSerial = m.Options.Item("IssuerSerial")
-			ENDIF
-			IF m.Options.GetKey("SubjectName") != 0
-				m.SubjectName = m.Options.Item("SubjectName")
-			ENDIF
-		ENDIF
+		m.IssuerSerial = This.GetOption(m.Options, "IssuerSerial", .F., .T.)
+		m.SubjectName = This.GetOption(m.Options, "SubjectName", .F., .T.)
 
 		LOCAL CertData AS Collection
 		LOCAL CertProperty
@@ -976,6 +952,35 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 		This.GUID.Create()
 
 		RETURN m.Prefix + STREXTRACT(This.GUID.ToString(), "{", "}")
+
+	ENDFUNC
+
+	HIDDEN FUNCTION GetOption (Options AS CollectionOrString, Option AS String, DefaultValue AS AnyType, EvaluateValue AS Boolean) AS AnyType
+
+		LOCAL Returned AS AnyType
+
+		m.Returned = m.DefaultValue
+
+		DO CASE
+		CASE ISNULL(m.Options)
+		CASE TYPE("m.Options") == "O"
+			IF m.Options.GetKey(m.Option) != 0
+				m.Returned = m.Options(m.Option)
+			ENDIF
+		CASE TYPE("m.Options") == "C"
+			IF m.Option + "=" $ m.Options
+				m.Returned = STREXTRACT(m.Options, m.Option + "=", ";", 1, 2)
+				IF !EMPTY(m.Returned)
+					IF m.EvaluateValue
+						m.Returned = EVALUATE(m.Returned)
+					ENDIF
+				ELSE
+					m.Returned = m.DefaultValue
+				ENDIF
+			ENDIF
+		ENDCASE
+
+		RETURN m.Returned
 
 	ENDFUNC
 
