@@ -57,6 +57,7 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 						'<memberdata name="locatesignature" type="method" display="LocateSignature"/>' + ;
 						'<memberdata name="processrefnode" type="method" display="ProcessRefNode"/>' + ;
 						'<memberdata name="processtransforms" type="method" display="ProcessTransforms"/>' + ;
+						'<memberdata name="save" type="method" display="Save"/>' + ;
 						'<memberdata name="setcanonicalmethod" type="method" display="SetCanonicalMethod"/>' + ;
 						'<memberdata name="sign" type="method" display="Sign"/>' + ;
 						'<memberdata name="validatedigest" type="method" display="ValidateDigest"/>' + ;
@@ -606,10 +607,11 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 		LOCAL NamespaceIdx AS Integer
 
 		m.TransNodes = This.CreateNewSignNode("Transforms")
-		m.RefNode.appendChild(m.TransNodes)
 
 		DO CASE
 		CASE !ISNULL(m.Transforms) AND VARTYPE(m.Transforms) == "O"
+
+			m.RefNode.appendChild(m.TransNodes)
 
 			FOR EACH m.SecTransform IN m.Transforms 
 
@@ -631,12 +633,16 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 
 		CASE !ISNULL(m.Transforms) AND VARTYPE(m.Transforms) == "C"
 	
+			m.RefNode.appendChild(m.TransNodes)
+
 			m.TransNode = This.CreateNewSignNode("Transform")
 			m.TransNodes.appendChild(m.TransNode)
 
 			m.TransNode.setAttribute("Algorithm", m.Transforms)
 
-		CASE !EMPTY(This.CanonicalMethod)
+		CASE !EMPTY(NVL(This.CanonicalMethod, ""))
+
+			m.RefNode.appendChild(m.TransNodes)
 
 			m.TransNode = This.CreateNewSignNode("Transform")
 			m.TransNodes.appendChild(m.TransNode)
@@ -674,6 +680,33 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 			This._AddReference(m.Nodes.item(0), m.Node, m.Algorithm, IIF(PCOUNT() > 2, m.Transforms, .NULL.), IIF(PCOUNT() > 3, m.Options, .NULL.))
 			
 		ENDIF
+
+	ENDFUNC
+
+	FUNCTION AddObjectElement (ObjData AS DOMElementOrString, Mimetype AS String, Encoding AS String) AS MSXML2.IXMLDOMElement
+
+		LOCAL ObjectElement AS MSXML2.IXMLDOMElement
+		LOCAL NewData AS MSXML2.IXMLDOMElement
+
+		m.ObjectElement = This.CreateNewSignNode("Object")
+		IF PCOUNT() > 1 AND !EMPTY(NVL(m.Mimetype, ""))
+			m.ObjectElement.setAttribute("MimeType", m.Mimetype)
+		ENDIF
+		IF PCOUNT() > 2 AND !EMPTY(NVL(m.Encoding, ""))
+			m.ObjectElement.setAttribute("Encoding", m.Encoding)
+		ENDIF
+
+		This.SigNode.appendChild(m.ObjectElement)
+
+		IF VARTYPE(m.ObjData) == "O"
+			m.NewData = This.SigNode.ownerDocument.importNode(IIF(ISNULL(m.ObjData.ownerDocument), m.ObjData.documentElement, m.ObjData), .T.)
+		ELSE
+			m.NewData = This.SigNode.ownerDocument.createTextNode(m.ObjData)
+		ENDIF
+
+		m.ObjectElement.appendChild(m.NewData)
+
+		RETURN m.ObjectElement
 
 	ENDFUNC
 
@@ -726,7 +759,7 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 		ENDIF
 	ENDFUNC
 
-	FUNCTION InsertSignature (RefNode AS MSXML2.IXMLDOMElement, BeforeNode AS MSXML2.IXMLDOMElement)
+	FUNCTION InsertSignature (RefNode AS MSXML2.IXMLDOMElement, BeforeNode AS MSXML2.IXMLDOMElement) AS MSXML2.IXMLDOMElement
 
 		LOCAL DOM AS MSXML2.DOMDocument60
 		LOCAL Signature AS MSXML2.IXMLDOMElement
@@ -741,7 +774,8 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 
 	ENDFUNC
 
-	FUNCTION AppendSignature (ParentNode AS MSXML2.IXMLDOMElement, InsertBefore AS Boolean)
+	FUNCTION AppendSignature (ParentNode AS MSXML2.IXMLDOMElement, InsertBefore AS Boolean) AS MSXML2.IXMLDOMElement
+
 
 		LOCAL RefNode AS MSXML2.IXMLDOMElement
 		LOCAL BeforeNode AS MSXML2.IXMLDOMElement
@@ -953,6 +987,10 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 
 		RETURN m.Prefix + STREXTRACT(This.GUID.ToString(), "{", "}")
 
+	ENDFUNC
+
+	FUNCTION Save (Filename AS String)
+		RETURN This.SigNode.ownerDocument.Save(m.Filename)
 	ENDFUNC
 
 	HIDDEN FUNCTION GetOption (Options AS CollectionOrString, Option AS String, DefaultValue AS AnyType, EvaluateValue AS Boolean) AS AnyType

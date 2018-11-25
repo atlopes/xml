@@ -1,0 +1,9 @@
+<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+  <ds:SignedInfo><ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+    <ds:SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
+  <ds:Reference URI="#pfx103848DC-CCE1-4BA8-BB24-3DA9FE913DE3"><ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><ds:DigestValue>iIjCyPpnj4dt/teC+reL9oYEi84=</ds:DigestValue></ds:Reference></ds:SignedInfo><ds:SignatureValue>WBU/ZzW0PHXVaS95RHm/HmER1nFchDZqzvePgMLpvIrASjJ/vWlDgAX1dwF+5xSu40uTLQ+gHxh67j/qdZrUb/5YMeW/yOU141FsTKlVfKHL+5BCphSSc/8yFUVUZAIlq3UlbmIGfV2GFd6Dqm6GuuUaPya0cbrrYggB13fhlqc=</ds:SignatureValue>
+<ds:KeyInfo><ds:X509Data><ds:X509Certificate>MIICsDCCAhmgAwIBAgIBADANBgkqhkiG9w0BAQUFADB1MQswCQYDVQQGEwJwdDEQMA4GA1UECAwHQ29pbWJyYTERMA8GA1UECgwIQm9va01BUkMxDjAMBgNVBAMMBUFsaWNlMRAwDgYDVQQHDAdDb2ltYnJhMR8wHQYJKoZIhvcNAQkBFhBpbmZvQGJvb2ttYXJjLnB0MB4XDTE4MTEwODIwMTkxMFoXDTE5MTEwODIwMTkxMFowdTELMAkGA1UEBhMCcHQxEDAOBgNVBAgMB0NvaW1icmExETAPBgNVBAoMCEJvb2tNQVJDMQ4wDAYDVQQDDAVBbGljZTEQMA4GA1UEBwwHQ29pbWJyYTEfMB0GCSqGSIb3DQEJARYQaW5mb0Bib29rbWFyYy5wdDCBnzANBgkqhkiG9w0BAQEFAAOBjQAwgYkCgYEArsMPC16kXgn7oM4mSXDrC3Dl2AICrU+nkKUAfpvMelOppX8mUSKhznfRraBgHDNXWGcuq4Z39FkI+0yrlym3Eh/XKS+UEltyF7ZbutOcB4vmhFWWPI9YIvQFat1rS+j12WT8N7fxqwirUIKcDL9NifoA7+2A1eaSw2KEaCyu32MCAwEAAaNQME4wHQYDVR0OBBYEFPIrWkpTslBO2e3RsCaVSockXisKMB8GA1UdIwQYMBaAFPIrWkpTslBO2e3RsCaVSockXisKMAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQEFBQADgYEALupC03pgZ4cPzwFvIeCmyMiIWi5S/DmxjAm0CMLmp5c6ss5cR7IA+q0yhPyrV/Awsmhj32t9YJlmUzxI6aAGFWLjWEDrjh1bctt2vJjhHO3Nu0aYKVQ30pSUBvfg251sOSkok3rJzLGASCf1MKGe1ud02f8SzUIDF4rStMThR5w=</ds:X509Certificate></ds:X509Data></ds:KeyInfo><ds:Object Id="pfx103848DC-CCE1-4BA8-BB24-3DA9FE913DE3"><Root>
+  <Child>
+    Hello, World!
+  </Child>
+</Root></ds:Object></ds:Signature>

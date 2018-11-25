@@ -19,6 +19,8 @@ See examples at the tests folder:
 - [Sign an XML document - basic](tests/sec/test-hw-sign.prg "test-hw-sign.prg")
 - [Sign an XML element](tests/sec/test-hw-child-sign.prg "test-hw-child-sign.prg")
 - [Sign an XML element with its own Id](tests/sec/test-hw-child-id-sign.prg "test-hw-child-id-sign.prg")
+- [Sign an XML document and put it inside an enveloping signature](tests/sec/test-hw-sign-enveloping.prg "test-hw-sign-enveloping.prg")
+- [Sign a text and put it inside an enveloping signature](tests/sec/test-text-sign-enveloping.prg "test-text-sign-enveloping.prg")
 
 ## Components
 
