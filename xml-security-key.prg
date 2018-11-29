@@ -22,6 +22,10 @@ DEFINE CLASS XMLSecurityKey AS Custom
 	Type = .NULL.
 	* Pass phrase to access private key
 	PassPhrase = ""
+	* Initialization Vector
+	IV = ""
+	* Key name
+	KName = ""
 	* X509 Certificate
 	X509Certificate = .NULL.
 	X509Thumbprint = .NULL.
@@ -349,7 +353,7 @@ DEFINE CLASS XMLSecurityKey AS Custom
 	ENDFUNC
 
 	FUNCTION GetAlgorithm () AS String
-		RETURN IIF(This.CryptParams.GetKey("Method") != 0, This.CryptParams("Method"), .NULL.)
+		RETURN IIF(This.CryptParams.GetKey("Method") != 0, This.CryptParams("Method"), "")
 	ENDFUNC
 
 	FUNCTION GetX509Certificate () AS String
@@ -380,7 +384,7 @@ DEFINE CLASS XMLSecurityKey AS Custom
 
 	ENDFUNC
 
-	FUNCTION FromEncrypedKeyElement (Element AS MSXML2.IXMLDOMElement) AS XMLSecurityKey
+	FUNCTION FromEncryptedKeyElement (Element AS MSXML2.IXMLDOMElement) AS XMLSecurityKey
 
 		LOCAL ObjEnc AS XMLSecurityEnc
 		LOCAL ObjKey AS XMLSeurityKey

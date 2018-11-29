@@ -21,6 +21,7 @@ See examples at the tests folder:
 - [Sign an XML element with its own Id](tests/sec/test-hw-child-id-sign.prg "test-hw-child-id-sign.prg")
 - [Sign an XML document and put it inside an enveloping signature](tests/sec/test-hw-sign-enveloping.prg "test-hw-sign-enveloping.prg")
 - [Sign a text and put it inside an enveloping signature](tests/sec/test-text-sign-enveloping.prg "test-text-sign-enveloping.prg")
+- [Encrypt an XML document](tests/sec/test-hw-encrypt.prg "tests/sec/test-hw-encrypt.prg")
 
 ## Components
 
@@ -29,7 +30,7 @@ See examples at the tests folder:
 - [XMLSecurityLibChilkat, a XMLSecurityLib subclass that interfaces to Chilkat RSA and Cert components](xml-security-lib-chilkat.prg "xml-security-lib-chilkat.prg")
 - [XMLSecurityKey, a class to manage key related operations](xml-security-key.prg "xml-security-key.prg")
 - [XMLSecurityDSig, a class to sign XML documents and fragments](xml-security-dsig.prg "xml-security-dsig.prg")
-- [XMLSecEnc, a class to encrypt XML data)](xml-security-enc.prg "xml-security-enc.prg")
+- [XMLSecurityEnc, a class to encrypt XML data)](xml-security-enc.prg "xml-security-enc.prg")
 
 ## Dependencies
 

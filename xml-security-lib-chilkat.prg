@@ -106,19 +106,19 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 		LOCAL PaddedData AS String
 		LOCAL SecretKey AS String
 
-		m.PaddedData = XMLKey.PadISO10126(m.Data, XMLKey.CryptParams("BlockSize"))
+		m.PaddedData = m.XMLKey.PadISO10126(m.Data, m.XMLKey.CryptParams("BlockSize"))
 		This.BinaryData.LoadEncoded(STRCONV(m.PaddedData, 13), "base64")
 
-		This.Crypto.CryptAlgorithm = XMLKey.CryptParams("Algorithm")
-		This.Crypto.CipherMode = XMLKey.CryptParams("Mode")
-		This.Crypto.KeyLength = XMLKey.CryptParams("KeySize") * 8
+		This.Crypto.CryptAlgorithm = m.XMLKey.CryptParams("Algorithm")
+		This.Crypto.CipherMode = m.XMLKey.CryptParams("Mode")
+		This.Crypto.KeyLength = m.XMLKey.CryptParams("KeySize") * 8
 
 		This.Crypto.RandomizeIV()
 
-		m.SecretKey = XMLKey.Key
+		m.SecretKey = m.XMLKey.Key
 		IF ISNULL(m.SecretKey) OR EMPTY(m.SecretKey)
 			This.Crypto.RandomizeKey()
-			XMLKey.Key = This.Crypto.SecretKey
+			m.XMLKey.Key = This.Crypto.SecretKey
 		ELSE
 			This.Crypto.SecretKey = m.SecretKey
 		ENDIF

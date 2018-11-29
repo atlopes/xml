@@ -557,7 +557,7 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 
 	ENDFUNC
 
-	HIDDEN FUNCTION _AddReference (sInfoNode AS MSXML2.IXMLDOMElement, Node AS MSXML2.IXMLDOMElement, Algorithm AS String, Transforms AS Collection, Options AS CollectionOrString)
+	HIDDEN FUNCTION _AddReference (sInfoNode AS MSXML2.IXMLDOMElement, Node AS MSXML2.IXMLDOMElement, Algorithm AS String, Transforms AS CollectionOrString, Options AS CollectionOrString)
 
 		LOCAL Prefix AS String
 		LOCAL Prefix_NS AS String
@@ -666,7 +666,7 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 
 	ENDFUNC
 
-	FUNCTION AddReference (Node AS MSXML2.IXMLDOMElement, Algorithm AS String, Transforms AS Collection, Options AS CollectionOrString)
+	FUNCTION AddReference (Node AS MSXML2.IXMLDOMElement, Algorithm AS String, Transforms AS CollectionOrString, Options AS CollectionOrString)
 
 		LOCAL Nodes AS MSXML2.IXMLDOMNodeList
 
@@ -679,6 +679,28 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 
 			This._AddReference(m.Nodes.item(0), m.Node, m.Algorithm, IIF(PCOUNT() > 2, m.Transforms, .NULL.), IIF(PCOUNT() > 3, m.Options, .NULL.))
 			
+		ENDIF
+
+	ENDFUNC
+
+	FUNCTION AddReferenceList (NodeList AS Collection, Algorithm AS String, Transforms AS CollectionOrString, Options AS CollectionOrString)
+
+		LOCAL Nodes AS MSXML2.IXMLDOMNodeList
+		LOCAL Node AS MSXML2.IXMLDOMElement
+
+		m.Nodes = This.SigNode.selectNodes(This.SearchPrefix + ":SignedInfo")
+		IF m.Nodes.length > 0
+
+			FOR EACH m.Node IN m.NodeList
+
+				IF TYPE("m.Node.nodeType") != "N" OR !INLIST(m.Node.nodeType, 1, 9)
+					ERROR "Node reference in list must be a document or an element." 
+				ENDIF
+	
+				This._AddReference(m.Nodes.item(0), m.Node, m.Algorithm, IIF(PCOUNT() > 2, m.Transforms, .NULL.), IIF(PCOUNT() > 3, m.Options, .NULL.))
+
+			ENDFOR
+
 		ENDIF
 
 	ENDFUNC
