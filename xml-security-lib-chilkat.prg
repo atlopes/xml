@@ -30,6 +30,8 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 
 	FUNCTION DecryptPrivate (Data AS String, XMLKey AS XMLSecurityKey) AS String
 
+		This.SetOAEPPadding(m.XMLKey)
+
 		This.BinaryData.LoadEncoded(STRCONV(m.Data, 13), "base64")
 
 		This.RSA.ImportPrivateKeyObj(m.XMLKey.Key)
@@ -38,6 +40,8 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 	ENDFUNC
 
 	FUNCTION DecryptPublic (Data AS String, XMLKey AS XMLSecurityKey) AS String
+
+		This.SetOAEPPadding(m.XMLKey)
 
 		This.BinaryData.LoadEncoded(STRCONV(m.Data, 13), "base64")
 
@@ -52,15 +56,15 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 
 		This.BinaryData.LoadEncoded(STRCONV(m.Data, 13), "base64")
 
-		This.Crypto.CryptAlgorithm = XMLKey.CryptParams("Algorithm")
-		This.Crypto.CipherMode = XMLKey.CryptParams("Mode")
-		This.Crypto.KeyLength = XMLKey.CryptParams("KeySize") * 8
+		This.Crypto.CryptAlgorithm = m.XMLKey.CryptParams("Algorithm")
+		This.Crypto.CipherMode = m.XMLKey.CryptParams("Mode")
+		This.Crypto.KeyLength = m.XMLKey.CryptParams("KeySize") * 8
 
-		This.Crypto.SecretKey = XMLKey.Key
+		This.Crypto.SetEncodedKey(STRCONV(m.XMLKey.Key, 15), "hex")
 		
 		IF This.Crypto.DecryptBd(This.BinaryData) = 1
-			m.PaddedData = SUBSTR("" + This.BinaryData.GetBinary(), XMLKey.CryptParams("BlockSize") + 1)
-			RETURN XMLKey.UnpadISO10126(m.PaddedData)
+			m.PaddedData = SUBSTR("" + This.BinaryData.GetBinary(), m.XMLKey.CryptParams("BlockSize") + 1)
+			RETURN m.XMLKey.UnpadISO10126(m.PaddedData)
 		ELSE
 			RETURN .NULL.
 		ENDIF
@@ -69,33 +73,21 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 
 	FUNCTION EncryptPrivate (Data AS String, XMLKey AS XMLSecurityKey) AS String
 
+		This.SetOAEPPadding(m.XMLKey)
+
 		This.BinaryData.LoadEncoded(STRCONV(m.Data, 13), "base64")
 		
-		IF m.XMLKey.CryptParams.GetKey("Padding") != 0
-			IF m.XMLKey.CryptParams("Padding") = PKCS1_OAEP_PADDING
-				This.RSA.OaepPadding = 1
-			ELSE
-				This.RSA.OaepPadding = 0
-			ENDIF
-		ENDIF
-
 		This.RSA.ImportPrivateKeyObj(m.XMLKey.Key)
 		RETURN This.RSA.EncryptBytes(This.BinaryData.GetBinary(), 1)
 
 	ENDFUNC
 
 	FUNCTION EncryptPublic (Data AS String, XMLKey AS XMLSecurityKey) AS String
-		
+	
+		This.SetOAEPPadding(m.XMLKey)
+	
 		This.BinaryData.LoadEncoded(STRCONV(m.Data, 13), "base64")
 		
-		IF m.XMLKey.CryptParams.GetKey("Padding") != 0
-			IF m.XMLKey.CryptParams("Padding") = PKCS1_OAEP_PADDING
-				This.RSA.OaepPadding = 1
-			ELSE
-				This.RSA.OaepPadding = 0
-			ENDIF
-		ENDIF
-
 		This.RSA.ImportPublicKeyObj(m.XMLKey.Key)
 		RETURN This.RSA.EncryptBytes(This.BinaryData.GetBinary(), 0)
 
@@ -118,9 +110,9 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 		m.SecretKey = m.XMLKey.Key
 		IF ISNULL(m.SecretKey) OR EMPTY(m.SecretKey)
 			This.Crypto.RandomizeKey()
-			m.XMLKey.Key = This.Crypto.SecretKey
+			m.XMLKey.Key = STRCONV(This.Crypto.GetEncodedKey("hex"), 16)
 		ELSE
-			This.Crypto.SecretKey = m.SecretKey
+			This.Crypto.SetEncodedKey(STRCONV(m.SecretKey, 15), "hex")
 		ENDIF
 
 		IF This.Crypto.EncryptBd(This.BinaryData) = 1
@@ -369,5 +361,17 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 		RETURN m.Success
 
 	ENDFUNC
+
+	HIDDEN PROCEDURE SetOAEPPadding (XMLKey AS XMLSecurityKey)
+
+		IF m.XMLKey.CryptParams.GetKey("Padding") != 0
+			IF m.XMLKey.CryptParams("Padding") = PKCS1_OAEP_PADDING
+				This.RSA.OaepPadding = 1
+			ELSE
+				This.RSA.OaepPadding = 0
+			ENDIF
+		ENDIF
+
+	ENDPROC
 
 ENDDEFINE

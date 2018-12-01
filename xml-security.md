@@ -22,6 +22,7 @@ See examples at the tests folder:
 - [Sign an XML document and put it inside an enveloping signature](tests/sec/test-hw-sign-enveloping.prg "test-hw-sign-enveloping.prg")
 - [Sign a text and put it inside an enveloping signature](tests/sec/test-text-sign-enveloping.prg "test-text-sign-enveloping.prg")
 - [Encrypt an XML document](tests/sec/test-hw-encrypt.prg "tests/sec/test-hw-encrypt.prg")
+- [Decrypt an encrypted XML document](tests/sec/test-hw-decrypt.prg "tests/sec/test-hw-decrypt.prg") (uses output from the precedent test)
 
 ## Components
 
@@ -38,5 +39,5 @@ See examples at the tests folder:
 - [GUID](https://www.bitbucket.org/atlopes/GUID "GUID")
 - [URL](https://www.bitbucket.org/atlopes/url "URL")
 
-XMLSecurity requires a crypto library to provide the encryption and hashing functions. For the moment, the RSA and Cert components of Chilkat are being used, but in the future other providers may be added to the set.
+XMLSecurity requires a crypto library to provide the encryption and hashing functions. For the moment, the RSA, Crypto and Cert components of Chilkat are being used, but in the future other providers may be added to the set.
 

@@ -35,7 +35,7 @@ DEFINE CLASS XMLSecurityKey AS Custom
 	* Encryption library
 	Library = .NULL.
 
-	FUNCTION Init (KeyType AS String, Scope AS String)
+	FUNCTION Init (KeyType AS String, Scope AS String, KLib AS StringOrObject)
 
 		SAFETHIS
 
@@ -139,6 +139,10 @@ DEFINE CLASS XMLSecurityKey AS Custom
 
 		This.Type = m.KeyType
 
+		IF PCOUNT() > 2
+			This.SetLibrary(m.KLib)
+		ENDIF
+
 	ENDFUNC
 
 	FUNCTION Destroy
@@ -147,10 +151,12 @@ DEFINE CLASS XMLSecurityKey AS Custom
 
 	FUNCTION SetLibrary (Library AS StringOrObject)
 
-		IF TYPE("m.Library") != "O"
-			This.Library = CREATEOBJECT(m.Library)
-		ELSE
-			This.Library = m.Library
+		IF !ISNULL(m.Library) AND TYPE("m.Library") $ "OC"
+			IF TYPE("m.Library") != "O"
+				This.Library = CREATEOBJECT(m.Library)
+			ELSE
+				This.Library = m.Library
+			ENDIF
 		ENDIF
 
 	ENDFUNC
@@ -387,9 +393,11 @@ DEFINE CLASS XMLSecurityKey AS Custom
 	FUNCTION FromEncryptedKeyElement (Element AS MSXML2.IXMLDOMElement) AS XMLSecurityKey
 
 		LOCAL ObjEnc AS XMLSecurityEnc
-		LOCAL ObjKey AS XMLSeurityKey
+		LOCAL ObjKey AS XMLSecurityKey
+		LOCAL ImpEnc AS XMLSecurityEnc
 
 		m.ObjEnc = CREATEOBJECT("XMLSecurityEnc")
+		m.ObjEnc.SetKeyLibrary(This.Library)
 		m.ObjEnc.SetNode(m.Element)
 		m.ObjKey = m.ObjEnc.LocateKey()
 		IF ISNULL(m.ObjKey)
@@ -398,7 +406,8 @@ DEFINE CLASS XMLSecurityKey AS Custom
 
 		m.ObjKey.IsEncrypted = .T.
 		m.ObjKey.EncryptedCtx = m.ObjEnc
-		m.ObjEnc.LocateKeyInfo(m.ObjKey, m.Element)
+		m.ImpEnc = CREATEOBJECT("XMLSecurityEnc")
+		m.ImpEnc.LocateKeyInfo(m.ObjKey, m.Element)
 
 		RETURN m.ObjKey
 

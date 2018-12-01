@@ -24,6 +24,7 @@ LOCAL XML AS MSXML2.DOMDocument60
 m.XML = CREATEOBJECT("MSXML2.DOMDocument.6.0")
 m.XML.async = .F.
 m.XML.Load("hw.xml")
+MESSAGEBOX(m.XML.XML)
 
 * instantiate a security library
 m.KLib = CREATEOBJECT("XMLSecurityLibChilkat")
@@ -57,3 +58,4 @@ m.XEnc.EncryptNode(m.OKey)
 
 * save the encrypted document
 m.XML.Save("test-hw-encrypt.xml")
+MESSAGEBOX(m.XML.XML)
