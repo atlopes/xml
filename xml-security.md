@@ -22,7 +22,9 @@ See examples at the tests folder:
 - [Sign an XML document and put it inside an enveloping signature](tests/sec/test-hw-sign-enveloping.prg "test-hw-sign-enveloping.prg")
 - [Sign a text and put it inside an enveloping signature](tests/sec/test-text-sign-enveloping.prg "test-text-sign-enveloping.prg")
 - [Encrypt an XML document](tests/sec/test-hw-encrypt.prg "tests/sec/test-hw-encrypt.prg")
-- [Decrypt an encrypted XML document](tests/sec/test-hw-decrypt.prg "tests/sec/test-hw-decrypt.prg") (uses output from the precedent test)
+- [Decrypt an encrypted XML document](tests/sec/test-hw-decrypt.prg "tests/sec/test-hw-decrypt.prg") (uses the output from the precedent test)
+- [Encrypt the content of an XML node element](tests/sec/test-hw-content-encrypt.prg "tests/sec/test-hw-content-encrypt.prg")
+- [Decrypt the content of an encrypted XML node  element](tests/sec/test-hw-content-decrypt.prg "tests/sec/test-hw-content-decrypt.prg") (uses the output from the precedent test)
 
 ## Components
 

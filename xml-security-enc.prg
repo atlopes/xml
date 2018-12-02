@@ -68,7 +68,7 @@ DEFINE CLASS XMLSecurityEnc AS Custom
 
 		This.EncDoc.load(m.curEncDoc)
 
-		m.RefURI = This.ImportXMLSecurityDSig.generateGUID();
+		m.RefURI = This.ImportXMLSecurityDSig.generateGUID()
 		
 		m.encDoc.documentElement.setAttribute("Id", m.RefURI)
 
@@ -157,7 +157,7 @@ DEFINE CLASS XMLSecurityEnc AS Custom
 			CASE This.Type == CONTENT_URI
 
 				m.EncImport = m.Doc.importNode(This.EncDoc.documentElement, .T.)
-				DO WHILE This.RawNode.hasChild
+				DO WHILE This.RawNode.hasChildNodes
 					This.RawNode.removeChild(This.RawNode.firstChild)
 				ENDDO
 				This.RawNode.appendChild(m.EncImport)
@@ -294,6 +294,7 @@ DEFINE CLASS XMLSecurityEnc AS Custom
 		LOCAL Doc AS MSXML2.DOMDocument60
 		LOCAL TmpDoc AS MSXML2.DOMDocument60
 		LOCAL EncNode AS MSXML2.IXMLDOMElement
+		LOCAL ParentNode AS MSXML2.IXMLDOMElement
 		LOCAL TmpNode AS MSXML2.IXMLDOMElement
 
 		m.EncryptedData = This.GetCipherValue()
@@ -327,15 +328,19 @@ DEFINE CLASS XMLSecurityEnc AS Custom
 						m.Doc = This.RawNode.ownerDocument
 					ENDIF
 
+					m.ParentNode = This.RawNode.parentNode
+
 					m.TmpDoc = CREATEOBJECT("MSXML2.DOMDocument.6.0")
 					m.TmpDoc.LoadXML("<root>" + m.DecryptedData + "</root>")
 
 					FOR EACH m.TmpNode IN m.TmpDoc.Documentelement.Childnodes
 						m.EncNode = This.RawNode.ownerDocument.importNode(m.TmpNode, .T.)
-						This.RawNode.parentNode.replaceChild(m.EncNode, This.RawNode)
+						m.ParentNode.insertBefore(m.EncNode, This.RawNode)
 					ENDFOR
 
-					RETURN This.RawNode.parentNode
+					m.ParentNode.removeChild(This.RawNode)
+	
+					RETURN m.ParentNode
 
 				OTHERWISE
 					RETURN m.DecryptedData

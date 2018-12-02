@@ -116,7 +116,7 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 		ENDIF
 
 		IF This.Crypto.EncryptBd(This.BinaryData) = 1
-			RETURN "" + This.Crypto.IV + This.BinaryData.GetBinary()
+			RETURN "" + STRCONV(This.Crypto.GetEncodedIV("hex"), 16) + This.BinaryData.GetBinary()
 		ELSE
 			RETURN .NULL.
 		ENDIF
