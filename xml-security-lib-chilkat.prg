@@ -222,6 +222,8 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 
 	FUNCTION VerifySignature (Data AS String, Signature AS String,	XMLKey AS XMLSecurityKey) AS Boolean
 
+		LOCAL Verified AS Boolean
+
 		This.BinaryData.LoadEncoded(STRCONV(m.Data, 13), "base64")
 
 		LOCAL Algorithm AS String
@@ -239,7 +241,7 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 			This.RSA.ImportPublicKeyObj(m.XMLKey.Key)
 			This.RSA.EncodingMode = "base64"
 			
-			RETURN This.RSA.VerifyBytesENC(This.BinaryData.GetBinary(), m.Algorithm, STRCONV(m.Signature, 13)) = 1
+			m.Verified = This.RSA.VerifyBytesENC(This.BinaryData.GetBinary(), m.Algorithm, STRCONV(m.Signature, 13)) = 1
 
 		ELSE
 
@@ -247,9 +249,11 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 			This.Crypto.HashAlgorithm = "sha-1"
 			This.Crypto.SetMacKeyEncoded(STRCONV(m.XMLKey.Key, 15), "hex")
 
-			RETURN This.Crypto.MacBytes(This.BinaryData.GetBinary()) == m.Signature
+			m.Verified = This.Crypto.MacBytes(This.BinaryData.GetBinary()) == m.Signature
 
 		ENDIF
+
+		RETURN m.Verified
 
 	ENDFUNC
 

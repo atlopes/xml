@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Root>
+	<Child><xenc:EncryptedData xmlns:xenc="http://www.w3.org/2001/04/xmlenc#" Type="http://www.w3.org/2001/04/xmlenc#Content"><xenc:EncryptionMethod Algorithm="http://www.w3.org/2001/04/xmlenc#aes256-cbc"/><dsig:KeyInfo xmlns:dsig="http://www.w3.org/2000/09/xmldsig#"><xenc:EncryptedKey><xenc:EncryptionMethod Algorithm="http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p"/><xenc:CipherData><xenc:CipherValue>bgwCwppjcXedSz3YeNdvcTK0VwoV5/l3lO/2TbvQlj4lNiQXGpCeqA+CrC/UsIIu2U7i52QBCZ1q/1vftdNPa0yU+PwGFxkVwl42KkeG5YyOzh0Dx/seSrQebKfyp7z4Z8wrXeDgLiakoMaIHJUv3uaOWqGb0GRmLCiFviBtnAU=</xenc:CipherValue></xenc:CipherData></xenc:EncryptedKey></dsig:KeyInfo>
+   <xenc:CipherData>
+      <xenc:CipherValue>bu3Un3hRUYzbomHF6ei0BsK5neSrPEANbWxHUuhIDUBHoXRvi675yjtINijxwnoHrXVXOHnhZsQUwH3YNwhUtA==</xenc:CipherValue>
+   </xenc:CipherData>
+</xenc:EncryptedData></Child>
+</Root>

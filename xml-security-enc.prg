@@ -484,11 +484,11 @@ DEFINE CLASS XMLSecurityEnc AS Custom
 					CASE m.KeyValue.baseName == "RSAKeyValue" AND !ISNULL(m.BaseKey)
 
 						STORE "" TO m.Modulus, m.Exponent
-						m.Element = m.KeyValue.getElementsByTagName("Modulus").item(0)
+						m.Element = m.KeyValue.getElementsByTagName("ds:Modulus").item(0)
 						IF !ISNULL(m.Element)
 							m.Modulus = STRCONV(m.Element.nodeValue, 14)
 						ENDIF
-						m.Element = m.KeyValue.getElementsByTagName("Exponent").item(0)
+						m.Element = m.KeyValue.getElementsByTagName("ds:Exponent").item(0)
 						IF !ISNULL(m.Element)
 							m.Exponent = STRCONV(m.Element.nodeValue, 14)
 						ENDIF
@@ -527,7 +527,7 @@ DEFINE CLASS XMLSecurityEnc AS Custom
 
 			CASE m.KeyChild.baseName == "X509Data" AND !ISNULL(m.BaseKey)
 
-				m.Element = m.KeyChild.getElementsByTagName("X509Certificate").item(0)
+				m.Element = m.KeyChild.getElementsByTagName("ds:X509Certificate").item(0)
 				IF !ISNULL(m.Element)
 					m.Splitter = CHRTRAN(m.Element.text, CHR(9) + CHR(13) + CHR(10) + " ", "")
 					m.X509 = "-----BEGIN CERTIFICATE-----" + CHR(10)

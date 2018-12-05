@@ -38,6 +38,8 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 	SearchPrefix = "secdsig"
 	SecurityKey = .NULL.
 
+#DEFINE MEMBERDATA_XMLSECURITYDSIG
+
 	_memberdata = "<VFPData>" + ;
 						'<!-- properties -->' + ;
 						'<memberdata name="guid" type="property" display="GUID"/>' + ;
@@ -46,21 +48,33 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 						'<memberdata name="signode" type="property" display="ValidatedNodes"/>' + ;
 						'<memberdata name="validatednodes" type="property" display="SigNode"/>' + ;
 						'<!-- methods -->' + ;
+						'<memberdata name="addobjectelement" type="method" display="AddObjectElement"/>' + ;
 						'<memberdata name="addreference" type="method" display="AddReference"/>' + ;
+						'<memberdata name="addreferencelist" type="method" display="AddReferenceList"/>' + ;
+						'<memberdata name="addx509cert" type="method" display="AddX509Cert"/>' + ;
+						'<memberdata name="appendsignature" type="method" display="AppendSignature"/>' + ;
 						'<memberdata name="calculatedigest" type="method" display="CalculateDigest"/>' + ;
 						'<memberdata name="canonicalizedata" type="method" display="CanonicalizeData"/>' + ;
 						'<memberdata name="canonicalizesignedinfo" type="method" display="CanonicalizeSignedInfo"/>' + ;
 						'<memberdata name="createnewnode" type="method" display="CreateNewNode"/>' + ;
 						'<memberdata name="createnewsignnode" type="method" display="CreateNewSignNode"/>' + ;
+						'<memberdata name="generateguid" type="method" display="GenerateGUID"/>' + ;
+						'<memberdata name="getoption" type="method" display="GetOption"/>' + ;
 						'<memberdata name="getrefids" type="method" display="GetRefIDs"/>' + ;
 						'<memberdata name="getrefnodeid" type="method" display="GetRefNodeID"/>' + ;
+						'<memberdata name="getx509certs" type="method" display="GetX509Certs"/>' + ;
+						'<memberdata name="insertsignature" type="method" display="InsertSignature"/>' + ;
+						'<memberdata name="locatekey" type="method" display="LocateKey"/>' + ;
 						'<memberdata name="locatesignature" type="method" display="LocateSignature"/>' + ;
 						'<memberdata name="processrefnode" type="method" display="ProcessRefNode"/>' + ;
 						'<memberdata name="processtransforms" type="method" display="ProcessTransforms"/>' + ;
 						'<memberdata name="save" type="method" display="Save"/>' + ;
 						'<memberdata name="setcanonicalmethod" type="method" display="SetCanonicalMethod"/>' + ;
+						'<memberdata name="setxmlkey" type="method" display="SetXMLKey"/>' + ;
 						'<memberdata name="sign" type="method" display="Sign"/>' + ;
 						'<memberdata name="validatedigest" type="method" display="ValidateDigest"/>' + ;
+						'<memberdata name="validatereference" type="method" display="ValidateReference"/>' + ;
+						'<memberdata name="verify" type="method" display="Verify"/>' + ;
 						"</VFPData>"
 
 	FUNCTION Init (Prefix AS String) AS Boolean
@@ -252,7 +266,8 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 					m.Element = m.Nodes.item(0)
 					m.CanonicalizationMethod = m.Element.getAttribute("Algorithm")
 				ENDIF
-				RETURN This.CanonicalizeData(m.Node, m.CanonicalizationMethod)
+				This.SignedInfo = This.CanonicalizeData(m.Node, m.CanonicalizationMethod)
+				RETURN This.SignedInfo
 			ENDIF
 		ENDIF
 		
@@ -729,6 +744,56 @@ DEFINE CLASS XMLSecurityDSig AS Custom
 		m.ObjectElement.appendChild(m.NewData)
 
 		RETURN m.ObjectElement
+
+	ENDFUNC
+
+	FUNCTION LocateKey (Node AS MSXML2.IXMLDOMElement) AS XMLSecurityKey
+
+		LOCAL KNode AS MSXML2.IXMLDOMElement
+
+		IF PCOUNT() = 0 OR ISNULL(m.Node)
+			m.KNode = This.SigNode
+		ELSE
+			m.KNode = m.Node
+		ENDIF
+
+		LOCAL Doc AS MSXML2.DOMDocument60
+		LOCAL CurNamespaces AS String
+		LOCAL Algorithm AS MSXML2.IXMLDOMAttribute
+
+		m.Doc = m.KNode.ownerDocument
+		m.CurNamespaces = m.Doc.getProperty("SelectionNamespaces")
+		m.Doc.setProperty("SelectionNamespaces", "xmlns:ds='" + XMLDSIG_NS + "'")
+		m.Algorithm = m.KNode.selectNodes("./ds:SignedInfo/ds:SignatureMethod/@Algorithm").item(0)
+		m.Doc.setProperty("SelectionNamespaces", m.CurNamespaces)
+		IF !ISNULL(m.Algorithm)
+			RETURN CREATEOBJECT("XMLSecurityKey", m.Algorithm.text, "public", IIF(!ISNULL(This.SecurityKey), This.SecurityKey.Library, .NULL.))
+		ENDIF
+
+		RETURN .NULL.
+
+	ENDFUNC
+
+	FUNCTION Verify (SKey AS XMLSecurityKey) AS Boolean
+
+		IF PCOUNT() = 0
+			m.SKey = This.SecurityKey
+		ENDIF
+
+		LOCAL Doc AS MSXML2.DOMDocument60
+		LOCAL CurNamespaces AS String
+		LOCAL SigValue AS MSXML2.IXMLDOMElement
+
+		m.Doc = This.SigNode.ownerDocument
+		m.CurNamespaces = m.Doc.getProperty("SelectionNamespaces")
+		m.Doc.setProperty("SelectionNamespaces", "xmlns:ds='" + XMLDSIG_NS + "'")
+		m.SigValue = This.SigNode.selectNodes("./ds:SignatureValue").item(0)
+		m.Doc.setProperty("SelectionNamespaces", m.CurNamespaces)
+		IF ISNULL(m.SigValue)
+			ERROR "Unable to locate SignatureValue"
+		ENDIF
+
+		RETURN m.SKey.VerifySignature(This.SignedInfo, STRCONV(m.SigValue.text, 14))
 
 	ENDFUNC
 

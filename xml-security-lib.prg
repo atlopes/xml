@@ -79,7 +79,7 @@ DEFINE CLASS XMLSecurityLib AS Custom
 	ENDFUNC
 
 	FUNCTION VerifySignature (Data AS String, Signature AS String,	XMLKey AS XMLSecurityKey)
-		RETURN ""
+		RETURN .F.
 	ENDFUNC
 
 	FUNCTION X509Export (Cert AS String) AS String
