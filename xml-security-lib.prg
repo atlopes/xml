@@ -54,11 +54,11 @@ DEFINE CLASS XMLSecurityLib AS Custom
 		RETURN ""
 	ENDFUNC
 
-	FUNCTION GetPrivateKey (Cert AS String) AS String
+	FUNCTION GetPrivateKey (Cert AS String, Password AS String) AS String
 		RETURN ""
 	ENDFUNC
 
-	FUNCTION GetPublicKey (Cert AS String) AS String
+	FUNCTION GetPublicKey (Cert AS String, IsCert AS Boolean) AS String
 		RETURN ""
 	ENDFUNC
 

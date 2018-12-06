@@ -123,7 +123,7 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 
 	ENDFUNC
 
-	FUNCTION GetPrivateKey (PEM AS String, Password AS String) AS String
+	FUNCTION GetPrivateKey (PEM AS String, Password AS String) AS Object
 
 		LOCAL PKey AS Chilkat_v9_5_0.PrivateKey
 
@@ -133,9 +133,16 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 
 	ENDFUNC
 
-	FUNCTION GetPublicKey (Cert AS String) AS String
+	FUNCTION GetPublicKey (Cert AS String, IsCert AS Boolean) AS Object
 
-		RETURN IIF(This.TemporaryFile(m.Cert), This.Cert.ExportPublicKey(), .NULL.)
+		LOCAL PKey AS Chilkat_v9_5_0.PublicKey
+
+		IF m.IsCert
+			RETURN IIF(This.TemporaryFile(m.Cert), This.Cert.ExportPublicKey(), .NULL.)
+		ELSE
+			m.PKey = CREATEOBJECT("Chilkat_9_5_0.PublicKey")
+			RETURN IIF(m.PKey.LoadFromString(m.Cert) = 1, m.PKey, .NULL.)
+		ENDIF
 
 	ENDFUNC
 
@@ -228,7 +235,11 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 
 		LOCAL Algorithm AS String
 
-		IF m.XMLKey.CryptParams.GetKey("Type") != 0
+		DO CASE
+		CASE ISNULL(m.XMLKey.Key)
+			m.Verified = .F.
+
+		CASE m.XMLKey.CryptParams.GetKey("Type") != 0
 
 			m.Algorithm = "sha1"
 			IF m.XMLKey.CryptParams.GetKey("Digest") != 0
@@ -243,7 +254,7 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 			
 			m.Verified = This.RSA.VerifyBytesENC(This.BinaryData.GetBinary(), m.Algorithm, STRCONV(m.Signature, 13)) = 1
 
-		ELSE
+		OTHERWISE
 
 			This.Crypto.MacAlgorithm = "hmac"
 			This.Crypto.HashAlgorithm = "sha-1"
@@ -251,7 +262,7 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 
 			m.Verified = This.Crypto.MacBytes(This.BinaryData.GetBinary()) == m.Signature
 
-		ENDIF
+		ENDCASE
 
 		RETURN m.Verified
 

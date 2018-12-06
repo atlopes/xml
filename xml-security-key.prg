@@ -263,7 +263,7 @@ DEFINE CLASS XMLSecurityKey AS Custom
 				IF m.IsCert
 					This.X509Thumbprint = This.GetRawThumbprint(This.X509Certificate)
 				ENDIF
-				This.Key = This.Library.GetPublicKey(This.Key)
+				This.Key = This.Library.GetPublicKey(This.Key, m.IsCert)
 				IF ISNULL(This.Key) OR (TYPE("This.Key") $ "NCL" AND EMPTY(This.Key))
 					ERROR "Unable to extract public key."
 				ENDIF

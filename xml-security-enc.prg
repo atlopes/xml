@@ -532,12 +532,12 @@ DEFINE CLASS XMLSecurityEnc AS Custom
 				m.Element = m.KeyChild.getElementsByTagName("ds:X509Certificate").item(0)
 				IF !ISNULL(m.Element)
 					m.Splitter = CHRTRAN(m.Element.text, CHR(9) + CHR(13) + CHR(10) + " ", "")
-					m.X509 = "-----BEGIN CERTIFICATE-----" + CHR(10)
+					m.X509 = "-----BEGIN CERTIFICATE-----" + LF
 					DO WHILE LEN(m.Splitter) != 0
-						m.X509 = m.X509 + LEFT(m.Splitter, 64) + CHR(10)
+						m.X509 = m.X509 + LEFT(m.Splitter, 64) + LF
 						m.Splitter = SUBSTR(m.Splitter, 65)
 					ENDDO
-					m.X509 = m.X509 + "-----END CERTIFICATE-----" + CHR(10)
+					m.X509 = m.X509 + "-----END CERTIFICATE-----" + LF
 
 					m.Doc.setProperty("SelectionNamespaces", m.CurNamespaces)
 					m.BaseKey.LoadKey(m.X509, .F., .T.)
