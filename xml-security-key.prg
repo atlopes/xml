@@ -453,7 +453,7 @@ DEFINE CLASS XMLSecurityKey AS Custom
 			m.Segment = CHR(0) + m.String
 
 		CASE m.Type = 0x03
-			m.Segment = CHR(0) + m.Segment
+			m.Segment = CHR(0) + m.String
 
 		OTHERWISE
 			m.Segment = m.String

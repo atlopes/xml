@@ -486,18 +486,20 @@ DEFINE CLASS XMLSecurityEnc AS Custom
 						STORE "" TO m.Modulus, m.Exponent
 						m.Element = m.KeyValue.getElementsByTagName("ds:Modulus").item(0)
 						IF !ISNULL(m.Element)
-							m.Modulus = STRCONV(m.Element.nodeValue, 14)
+							m.Modulus = STRCONV(m.Element.text, 14)
 						ENDIF
 						m.Element = m.KeyValue.getElementsByTagName("ds:Exponent").item(0)
 						IF !ISNULL(m.Element)
-							m.Exponent = STRCONV(m.Element.nodeValue, 14)
+							m.Exponent = STRCONV(m.Element.text, 14)
 						ENDIF
 
 						IF EMPTY(m.Modulus) OR EMPTY(m.Exponent)
 							ERROR "Missing Modulus or Exponent."
 						ENDIF
 
+						m.Doc.setProperty("SelectionNamespaces", m.CurNamespaces)
 						m.BaseKey.LoadKey(This.ImportXMLSecurityKey.ConvertRSA(m.Modulus, m.Exponent))
+						RETURN m.BaseKey
 
 					ENDCASE
 				ENDFOR
@@ -537,7 +539,9 @@ DEFINE CLASS XMLSecurityEnc AS Custom
 					ENDDO
 					m.X509 = m.X509 + "-----END CERTIFICATE-----" + CHR(10)
 
+					m.Doc.setProperty("SelectionNamespaces", m.CurNamespaces)
 					m.BaseKey.LoadKey(m.X509, .F., .T.)
+					RETURN m.BaseKey
 
 				ENDIF
 			ENDCASE
