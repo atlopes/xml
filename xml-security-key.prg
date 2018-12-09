@@ -161,7 +161,7 @@ DEFINE CLASS XMLSecurityKey AS Custom
 
 	ENDFUNC
 
-	FUNCTION GetSysmmetricKeySize () AS Integer
+	FUNCTION GetSymmetricKeySize () AS Integer
 
 		IF This.CryptParams.GetKey("KeySize") != 0
 			RETURN This.CryptParams("KeySize")
@@ -179,7 +179,7 @@ DEFINE CLASS XMLSecurityKey AS Custom
 		LOCAL Byte AS Integer
 		LOCAL Parity AS Integer
 
-		m.KeySize = This.GetSysmmetricKeySize()
+		m.KeySize = This.GetSymmetricKeySize()
 		IF ISNULL(m.KeySize)
 			ERROR "Unknown key size."
 		ENDIF
@@ -285,6 +285,10 @@ DEFINE CLASS XMLSecurityKey AS Custom
 					ERROR "Undefined key size."
 				ENDIF
 
+				IF ISNULL(This.Key) OR EMPTY(This.Key)
+					ERROR "Undefined key."
+				ENDIF
+
 				IF LEN(This.Key) < This.CryptParams("KeySize")
 					ERROR "Key of insufficient length."
 				ENDIF
@@ -370,26 +374,6 @@ DEFINE CLASS XMLSecurityKey AS Custom
 		RETURN This.X509Thumbprint
 	ENDFUNC
 
-	FUNCTION PadISO10126 (Data AS String, BlockSize AS Integer) AS String
-
-		IF m.BlockSize > 256
-			ERROR "Block size greater than 256 not allowed."
-		ENDIF
-
-		LOCAL PadChr AS Integer
-
-		m.PadChr = m.BlockSize - (LEN(m.Data) % m.BlockSize)
-
-		RETURN m.Data + REPLICATE(CHR(m.PadChr), m.PadChr)
-
-	ENDFUNC
-
-	FUNCTION UnpadISO10126 (Data AS String) AS String
-
-		RETURN LEFT(m.Data, LEN(m.Data) - ASC(RIGHT(m.Data, 1)))
-
-	ENDFUNC
-
 	FUNCTION FromEncryptedKeyElement (Element AS MSXML2.IXMLDOMElement) AS XMLSecurityKey
 
 		LOCAL ObjEnc AS XMLSecurityEnc
@@ -414,68 +398,7 @@ DEFINE CLASS XMLSecurityKey AS Custom
 	ENDFUNC
 
 	FUNCTION ConvertRSA (Modulus AS String, Exponent AS String) AS String
-
-		LOCAL ExponentEncoding AS String
-		LOCAL ModulusEncoding AS String
-		LOCAL SequenceEncoding AS String
-		LOCAL BitStringEncoding AS String
-		LOCAL RSAAlgorithmIdentifier AS String
-		LOCAL PublicKeyInfo AS String
-		LOCAL Encoding AS String
-		
-		m.ExponentEncoding = This.MakeASNSegment(0x02, m.Exponent)
-		m.ModulusEncoding = This.MakeASNSegment(0x02, m.Modulus)
-		m.SequenceEncoding = This.MakeASNSegment(0x30, m.ModulusEncoding + m.ExponentEncoding)
-		m.BitStringEncoding = This.MakeASNSegment(0x03, m.SequenceEncoding)
-		m.RSAAlgorithmIdentifier = "" + 0h300D06092A864886F70D0101010500
-		m.PublicKeyInfo = This.MakeASNSegment(0x30, m.RSAAlgorithmIdentifier + m.BitStringEncoding)
-
-		m.PublicKeyInfo = STRCONV(m.PublicKeyInfo, 13)
-
-		m.Encoding = "-----BEGIN PUBLIC KEY-----" + LF
-		DO WHILE !EMPTY(m.PublicKeyInfo)
-			m.Encoding = m.Encoding + LEFT(m.PublicKeyInfo, 64) + LF
-			m.PublicKeyInfo = SUBSTR(m.PublicKeyInfo, 65)
-		ENDDO
-		m.Encoding = m.Encoding + "-----END PUBLIC KEY-----" + LF
-
-		RETURN m.Encoding
-
-	ENDFUNC
-	
-	HIDDEN FUNCTION MakeASNSegment (Type AS Integer, String AS String) AS String
-
-		LOCAL Segment AS String
-		LOCAL Length AS Integer
-
-		DO CASE
-		CASE m.Type = 0x02 AND ASC(LEFT(m.String, 1)) > 0x7f
-			m.Segment = CHR(0) + m.String
-
-		CASE m.Type = 0x03
-			m.Segment = CHR(0) + m.String
-
-		OTHERWISE
-			m.Segment = m.String
-		ENDCASE
-
-		m.Length = LEN(m.Segment)
-
-		DO CASE
-		CASE m.Length < 128
-			m.Segment = CHR(m.Type) + CHR(m.Length) + m.Segment
-
-		CASE m.Length < 0x0100
-			m.Segment = CHR(m.Type) + CHR(0x81) + CHR(m.Length) + m.Segment
-
-		CASE m.Length < 0x010000
-			m.Segment = CHR(m.Type) + CHR(0x82) + CHR(INT(m.Length / 0x0100)) + CHR(m.Length % 0x0100) + m.Segment
-
-		OTHERWISE
-			m.Segment = .NULL.
-		ENDCASE
-		
-		RETURN m.Segment
+		RETURN This.Library.ConvertRSA(m.Modulus, m.Exponent)
 	ENDFUNC
 
 	FUNCTION ParseX509Certificate (Cert AS String) AS Collection

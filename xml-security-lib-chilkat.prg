@@ -54,17 +54,18 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 
 		LOCAL PaddedData AS String
 
-		This.BinaryData.LoadEncoded(STRCONV(m.Data, 13), "base64")
+		This.Crypto.SetEncodedKey(STRCONV(m.XMLKey.Key, 15), "hex")
+		This.Crypto.SetEncodedIV(STRCONV(LEFT(m.Data, m.XMLKey.CryptParams("BlockSize")), 15), "hex")
+
+		This.BinaryData.LoadEncoded(STRCONV(SUBSTR(m.Data, m.XMLKey.CryptParams("BlockSize") + 1), 15), "hex")
 
 		This.Crypto.CryptAlgorithm = m.XMLKey.CryptParams("Algorithm")
 		This.Crypto.CipherMode = m.XMLKey.CryptParams("Mode")
 		This.Crypto.KeyLength = m.XMLKey.CryptParams("KeySize") * 8
 
-		This.Crypto.SetEncodedKey(STRCONV(m.XMLKey.Key, 15), "hex")
-		
 		IF This.Crypto.DecryptBd(This.BinaryData) = 1
-			m.PaddedData = SUBSTR("" + This.BinaryData.GetBinary(), m.XMLKey.CryptParams("BlockSize") + 1)
-			RETURN m.XMLKey.UnpadISO10126(m.PaddedData)
+			m.PaddedData = "" + This.BinaryData.GetBinary()
+			RETURN This.UnpadISO10126(m.PaddedData)
 		ELSE
 			RETURN .NULL.
 		ENDIF
@@ -98,7 +99,7 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 		LOCAL PaddedData AS String
 		LOCAL SecretKey AS String
 
-		m.PaddedData = m.XMLKey.PadISO10126(m.Data, m.XMLKey.CryptParams("BlockSize"))
+		m.PaddedData = This.PadISO10126(m.Data, m.XMLKey.CryptParams("BlockSize"))
 		This.BinaryData.LoadEncoded(STRCONV(m.PaddedData, 13), "base64")
 
 		This.Crypto.CryptAlgorithm = m.XMLKey.CryptParams("Algorithm")
