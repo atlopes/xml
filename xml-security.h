@@ -30,7 +30,7 @@
 #DEFINE	HASH_SHA256				"http://www.w3.org/2001/04/xmlenc#sha256'"
 #DEFINE	HASH_SHA384				"http://www.w3.org/2001/04/xmldsig-more#sha384"
 #DEFINE	HASH_SHA512				"http://www.w3.org/2001/04/xmlenc#sha512"
-#DEFINE	HASH_RIPEMD16			"http://www.w3.org/2001/04/xmlenc#ripemd160"
+#DEFINE	HASH_RIPEMD160			"http://www.w3.org/2001/04/xmlenc#ripemd160"
 
 * Padding constants
 #DEFINE	PKCS1_PADDING			0
