@@ -2,15 +2,9 @@ CLEAR
 
 SET DEFAULT TO (JUSTPATH(SYS(16)))
 
-*!*	make sure the Chilkat components are unlocked
-*!*	LOCAL Chilkat AS Chilkat_v9_5_0.ChilkatGlobal
-
-*!*	m.Chilkat = CREATEOBJECT("Chilkat_9_5_0.Global")
-*!*	m.Chilkat.Unlockbundle(your unlock key)
-
 DO LOCFILE("xml-security-enc.prg")
 DO LOCFILE("xml-security-key.prg")
-DO LOCFILE("xml-security-lib-chilkat.prg")
+DO LOCFILE("xml-security-lib-openssl.prg")
 
 #INCLUDE "..\..\xml-security.h"
 
@@ -29,14 +23,14 @@ m.XML.Load("hw.xml")
 MESSAGEBOX(m.XML.XML)
 
 * instantiate a security library
-m.KLib = CREATEOBJECT("XMLSecurityLibChilkat")
+m.KLib = CREATEOBJECT("XMLSecurityLibOpenSSL")
 
 * instantiate a public key object
 m.SKey = CREATEOBJECT("XMLSecurityKey", RSA_OAEP_MGF1P, "public")
 * attach the crypto library to it
 m.SKey.SetLibrary(m.KLib)
 * and load the key
-m.SKey.LoadKey("alice-cert.pem", .T., .F.)
+m.SKey.LoadKey("alice-cert.pem", .T., .T.)
 
 * instantiate a session key for the object
 m.OKey = CREATEOBJECT("XMLSecurityKey", AES256_CBC)

@@ -2,15 +2,9 @@ CLEAR
 
 SET DEFAULT TO (JUSTPATH(SYS(16)))
 
-*!*	make sure the Chilkat components are unlocked
-*!*	LOCAL Chilkat AS Chilkat_v9_5_0.ChilkatGlobal
-
-*!*	m.Chilkat = CREATEOBJECT("Chilkat_9_5_0.Global")
-*!*	m.Chilkat.Unlockbundle(your unlock key)
-
 DO LOCFILE("xml-security-enc.prg")
 DO LOCFILE("xml-security-key.prg")
-DO LOCFILE("xml-security-lib-chilkat.prg")
+DO LOCFILE("xml-security-lib-openssl.prg")
 
 #INCLUDE "..\..\xml-security.h"
 
@@ -26,9 +20,10 @@ m.XML = CREATEOBJECT("MSXML2.DOMDocument.6.0")
 m.XML.preserveWhiteSpace = .T.
 m.XML.async = .F.
 m.XML.Load("hw-id.xml")
+MESSAGEBOX(m.XML.xml)
 
 * instantiate a security library
-m.KLib = CREATEOBJECT("XMLSecurityLibChilkat")
+m.KLib = CREATEOBJECT("XMLSecurityLibOpenSSL")
 
 * instantiate a private key object
 m.SKey = CREATEOBJECT("XMLSecurityKey", RSA_SHA1, "private")
@@ -63,3 +58,4 @@ m.DSig.AppendSignature(m.XML)
 
 * and save the signed document
 m.XML.Save("test-hw-child-id-sign.xml")
+MESSAGEBOX(m.XML.xml)

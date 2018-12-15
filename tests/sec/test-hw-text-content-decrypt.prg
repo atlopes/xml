@@ -2,15 +2,9 @@ CLEAR
 
 SET DEFAULT TO (JUSTPATH(SYS(16)))
 
-*!*	make sure the Chilkat components are unlocked
-*!*	LOCAL Chilkat AS Chilkat_v9_5_0.ChilkatGlobal
-
-*!*	m.Chilkat = CREATEOBJECT("Chilkat_9_5_0.Global")
-*!*	m.Chilkat.Unlockbundle(your unlock key)
-
 DO LOCFILE("xml-security-enc.prg")
 DO LOCFILE("xml-security-key.prg")
-DO LOCFILE("xml-security-lib-chilkat.prg")
+DO LOCFILE("xml-security-lib-openssl.prg")
 
 #INCLUDE "..\..\xml-security.h"
 
@@ -31,7 +25,7 @@ m.XML.Load("test-hw-text-content-encrypt.xml")
 MESSAGEBOX(m.XML.xml)
 
 * instantiate a security library
-m.KLib = CREATEOBJECT("XMLSecurityLibChilkat")
+m.KLib = CREATEOBJECT("XMLSecurityLibOpenSSL")
 
 * instantiate an encryption object
 m.XEnc = CREATEOBJECT("XMLSecurityEnc")

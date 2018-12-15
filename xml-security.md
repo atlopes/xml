@@ -29,8 +29,8 @@ See examples at the tests folder:
 - [Decrypt the content of an encrypted XML node](tests/sec/test-hw-content-decrypt.prg "tests/sec/test-hw-content-decrypt.prg") (uses the output from the precedent test)
 - [Encrypt the text content of an XML node](tests/sec/test-hw-text-content-encrypt.prg "tests/sec/test-hw-text-content-encrypt.prg")
 - [Decrypt the text content of an encrypted XML node](tests/sec/test-hw-text-content-decrypt.prg "tests/sec/test-hw-text-content-decrypt.prg") (uses the output from the precedent test)
-- [Encrypt an XML document using a symmetric key and the Chilkat library](tests/sec/test-hw-encrypt-symmetric.prg "tests/sec/test-hw-encrypt-symmetric.prg")
-- [Decrypt an XML document using a symmetric key and the OpenSSL library](tests/sec/test-hw-decrypt-symmetric.prg "tests/sec/test-hw-decrypt-symmetric.prg") (uses the output from the precedent test)
+- [Encrypt an XML document using a symmetric key](tests/sec/test-hw-encrypt-symmetric.prg "tests/sec/test-hw-encrypt-symmetric.prg")
+- [Decrypt an XML document using a symmetric key](tests/sec/test-hw-decrypt-symmetric.prg "tests/sec/test-hw-decrypt-symmetric.prg") (uses the output from the precedent test)
 
 ## Components
 
@@ -48,5 +48,11 @@ See examples at the tests folder:
 - [GUID](https://www.bitbucket.org/atlopes/GUID "GUID")
 - [URL](https://www.bitbucket.org/atlopes/url "URL")
 
-XMLSecurity requires a crypto library to provide the encryption and hashing functions. For the moment, the RSA, Crypt2 and Cert components of Chilkat are being used, while the first steps to add an OpenSSL library to the set have already been made.
+Additionally, XMLSecurity requires a crypto library to provide the encryption and hashing functions. The distributed XMLSecurityLib sub-classes provide interfaces to two such components, 
+[OpenSSL](https://www.openssl.org "OpenSSL"), a widely used open source solution, and 
+[Chilkat](https://www.chilkatsoft.com/refdoc/activex.asp "Chilkat"), a commercial product that adds significant value to a VFP development environment.
+
+To use the OpenSSL library, at least `libcrypto.dll` must be present in VFP's path, but a full OpenSSL package may be installed from one of the available sources listed in the project wiki: 
+[https://wiki.openssl.org/index.php/Binaries](https://wiki.openssl.org/index.php/Binaries). 
+
 

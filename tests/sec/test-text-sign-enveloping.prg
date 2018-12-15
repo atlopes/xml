@@ -2,15 +2,9 @@ CLEAR
 
 SET DEFAULT TO (JUSTPATH(SYS(16)))
 
-*!*	make sure the Chilkat components are unlocked
-*!*	LOCAL Chilkat AS Chilkat_v9_5_0.ChilkatGlobal
-
-*!*	m.Chilkat = CREATEOBJECT("Chilkat_9_5_0.Global")
-*!*	m.Chilkat.Unlockbundle(your unlock key)
-
 DO LOCFILE("xml-security-enc.prg")
 DO LOCFILE("xml-security-key.prg")
-DO LOCFILE("xml-security-lib-chilkat.prg")
+DO LOCFILE("xml-security-lib-openssl.prg")
 
 #INCLUDE "..\..\xml-security.h"
 
@@ -28,7 +22,7 @@ The XML signature will envelope the text
 ENDTEXT
 
 * instantiate a security library
-m.KLib = CREATEOBJECT("XMLSecurityLibChilkat")
+m.KLib = CREATEOBJECT("XMLSecurityLibOpenSSL")
 
 * instantiate a private key object
 m.SKey = CREATEOBJECT("XMLSecurityKey", RSA_SHA1, "private")
@@ -60,3 +54,4 @@ m.DSig.AddX509Cert(FILETOSTR("alice-cert.pem"), .T.)
 
 * all is done, just save the signed document, enveloped by the signature
 m.DSig.Save("test-text-sign-enveloping.xml")
+MESSAGEBOX(FILETOSTR("test-text-sign-enveloping.xml"))

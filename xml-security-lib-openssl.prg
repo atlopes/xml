@@ -22,7 +22,7 @@ DEFINE CLASS XMLSecurityLibOpenSSL AS XMLSecurityLib
 		IF ASCAN(m.Declared, "OpenSSL_CipherCtxRelease") = 0
 
 			IF PCOUNT() = 0
-				m.OpenSSL_DLL = "libcrypto-1_1.dll"			&& must be somewhere in VFP's path
+				m.OpenSSL_DLL = LOCFILE("libcrypto-1_1.dll")			&& must be somewhere in VFP's path
 			ENDIF
 
 			DECLARE INTEGER EVP_EncryptInit_ex IN (m.OpenSSL_DLL) AS OpenSSL_EncryptInit ;
@@ -45,8 +45,21 @@ DEFINE CLASS XMLSecurityLibOpenSSL AS XMLSecurityLib
 				INTEGER Context, STRING In, INTEGER InLength
 			DECLARE INTEGER EVP_DigestFinal_ex IN (m.OpenSSL_DLL) AS OpenSSL_DigestFinal ;
 				INTEGER Context, STRING @ Out, INTEGER @ OutLength
+			DECLARE INTEGER EVP_DigestSignInit IN (m.OpenSSL_DLL) AS OpenSSL_DigestSignInit ;
+				INTEGER Context, INTEGER PKeyCtx, INTEGER DigestType, INTEGER Engine, INTEGER PKey
+			DECLARE INTEGER EVP_DigestSignFinal IN (m.OpenSSL_DLL) AS OpenSSL_DigestSignFinal ;
+				INTEGER Context, STRING @ Out, INTEGER @ OutLength
+			DECLARE INTEGER EVP_DigestVerifyInit IN (m.OpenSSL_DLL) AS OpenSSL_DigestVerifyInit ;
+				INTEGER Context, INTEGER PKeyCtx, INTEGER DigestType, INTEGER Engine, INTEGER PKey
+			DECLARE INTEGER EVP_DigestVerifyFinal IN (m.OpenSSL_DLL) AS OpenSSL_DigestVerifyFinal ;
+				INTEGER Context, STRING In, INTEGER InLen
 			DECLARE INTEGER EVP_MD_size IN (m.OpenSSL_DLL) AS OpenSSL_DigestSize ;
 				INTEGER DigestType
+			DECLARE INTEGER EVP_get_digestbyname IN (m.OpenSSL_DLL) AS OpenSSL_DigestByName ;
+				STRING DigestName
+
+#DEFINE	OpenSSL_DigestSignUpdate	OpenSSL_DigestUpdate
+#DEFINE	OpenSSL_DigestVerifyUpdate	OpenSSL_DigestUpdate
 
 			DECLARE INTEGER EVP_PKEY_encrypt_init IN (m.OpenSSL_DLL) AS OpenSSL_PKeyEncryptInit ;
 				INTEGER Context
@@ -56,7 +69,7 @@ DEFINE CLASS XMLSecurityLibOpenSSL AS XMLSecurityLib
 				INTEGER Context
 			DECLARE INTEGER EVP_PKEY_decrypt IN (m.OpenSSL_DLL) AS OpenSSL_PKeyDecrypt ;
 				INTEGER Context, STRING @ Out, INTEGER @ OutLength, STRING In, INTEGER InLength
-			DECLARE INTEGER RSA_pkey_ctx_ctrl IN (m.OpenSSL_DLL) AS OpenSSL_PKeyRSA_Padding ;
+			DECLARE INTEGER RSA_pkey_ctx_ctrl IN (m.OpenSSL_DLL) AS OpenSSL_PKeyCtxCtrl ;
 				INTEGER Context, INTEGER N1, INTEGER N2, INTEGER Padding, INTEGER N3
 
 			DECLARE INTEGER EVP_aes_128_cbc IN (m.OpenSSL_DLL) AS OpenSSL_AES_128_CBC
@@ -76,10 +89,20 @@ DEFINE CLASS XMLSecurityLibOpenSSL AS XMLSecurityLib
 				INTEGER Bio, INTEGER @ PKey, INTEGER CallBack, INTEGER PassPhrase
 			DECLARE INTEGER PEM_read_bio_X509 IN (m.OpenSSL_DLL) AS OpenSSL_BioLoadX509 ;
 				INTEGER Bio, INTEGER @ Type, INTEGER CallBack, INTEGER XData
+			DECLARE INTEGER PEM_write_bio_X509 IN (m.OpenSSL_DLL) AS OpenSSL_BioWriteX509 ;
+				INTEGER Bio, INTEGER X509
+			DECLARE INTEGER X509_NAME_print_ex IN (m.OpenSSL_DLL) AS OpenSSL_BioWriteX509Name ;
+				INTEGER Bio, INTEGER X509Name, INTEGER Indent, INTEGER Flags
 			DECLARE INTEGER X509_get_pubkey IN (m.OpenSSL_DLL) AS OpenSSL_X509GetPublicKey ;
-				INTEGER Cert
+				INTEGER X509
 			DECLARE INTEGER X509_free IN (m.OpenSSL_DLL) AS OpenSSL_X509Release ;
-				INTEGER Cert
+				INTEGER X509
+			DECLARE INTEGER X509_get_version IN (m.OpenSSL_DLL) AS OpenSSL_X509GetVersion ;
+				INTEGER X509
+			DECLARE INTEGER X509_get_subject_name IN (m.OpenSSL_DLL) AS OpenSSL_X509GetSubjectName ;
+				INTEGER X509
+			DECLARE INTEGER X509_get_issuer_name IN (m.OpenSSL_DLL) AS OpenSSL_X509GetIssuerName ;
+				INTEGER X509
 
 			DECLARE INTEGER RAND_bytes IN (m.OpenSSL_DLL) AS OpenSSL_RandBytes ;
 				STRING @ Buf, INTEGER Num
@@ -89,6 +112,10 @@ DEFINE CLASS XMLSecurityLibOpenSSL AS XMLSecurityLib
 			DECLARE INTEGER BIO_s_mem IN (m.OpenSSL_DLL) AS OpenSSL_BioMem
 			DECLARE INTEGER BIO_write IN (m.OpenSSL_DLL) AS OpenSSL_BioWrite ;
 				INTEGER Bio, STRING Source, INTEGER Length
+			DECLARE INTEGER BIO_read IN (m.OpenSSL_DLL) AS OpenSSL_BioRead ;
+				INTEGER Bio, STRING @ Dest, INTEGER Length
+			DECLARE INTEGER BIO_ctrl_pending IN (m.OpenSSL_DLL) AS OpenSSL_BioPending ;
+				INTEGER Bio
 			DECLARE INTEGER BIO_free_all IN (m.OpenSSL_DLL) AS OpenSSL_BioRelease ;
 				INTEGER Bio
 
@@ -137,15 +164,13 @@ DEFINE CLASS XMLSecurityLibOpenSSL AS XMLSecurityLib
 		LOCAL Decrypted AS String
 		LOCAL DecryptedLength AS Integer
 
-		m.Decrypted = ""
+		m.Decrypted = .NULL.
 
 		IF !EMPTY(This.PKeyCtx)
 
 			IF OpenSSL_PKeyDecryptInit(This.PKeyCtx) > 0
 
-				IF m.XMLKey.CryptParams.GetKey("Padding") != 0
-					OpenSSL_PKeyRSA_Padding(This.PKeyCtx, -1, 0x1001, IIF(m.XMLKey.CryptParams("Padding") = PKCS1_OAEP_PADDING, 4, 1), 0)
-				ENDIF
+				This.SetPadding(m.XMLKey)
 	
 				m.DecryptedLength = 0
 				IF OpenSSL_PKeyDecrypt(This.PKeyCtx, 0, @m.DecryptedLength, m.Data, LEN(m.Data)) > 0
@@ -153,36 +178,26 @@ DEFINE CLASS XMLSecurityLibOpenSSL AS XMLSecurityLib
 					m.Decrypted = REPLICATE(CHR(0), m.DecryptedLength)
 
 					IF OpenSSL_PKeyDecrypt(This.PKeyCtx, @m.Decrypted, @m.DecryptedLength, m.Data, LEN(m.Data)) <= 0
-						m.Decrypted = ""
+						m.Decrypted = .NULL.
 					ENDIF
 				ENDIF
 			ENDIF
 
 		ENDIF
 
-		RETURN EVL(m.Decrypted, .NULL.)
+		RETURN m.Decrypted
 
 	ENDFUNC
 
 	FUNCTION DecryptSymmetric (Data AS String, XMLKey AS XMLSecurityKey) AS String
 
 		LOCAL Context AS Integer
-		LOCAL CipherName AS String
 		LOCAL Cipher AS Integer
 
-		m.CipherName = m.XMLKey.CryptParams("Cipher")
-		DO CASE
-		CASE m.CipherName == "des-ede3-cbc"
-			m.Cipher = OpenSSL_DES_EDE3_CBC()
-		CASE m.CipherName == "aes-128-cbc"
-			m.Cipher = OpenSSL_AES_128_CBC()
-		CASE m.CipherName == "aes-192-cbc"
-			m.Cipher = OpenSSL_AES_192_CBC()
-		CASE m.CipherName == "aes-256-cbc"
-			m.Cipher = OpenSSL_AES_256_CBC()
-		OTHERWISE
+		m.Cipher = This.GetCipherType(m.XMLKey)
+		IF ISNULL(m.Cipher)
 			RETURN .NULL.
-		ENDCASE
+		ENDI
 
 		LOCAL PaddedData AS String
 		LOCAL SecretKey AS String
@@ -198,29 +213,33 @@ DEFINE CLASS XMLSecurityLibOpenSSL AS XMLSecurityLib
 		LOCAL BlockLength AS Integer
 		LOCAL Decrypted AS String
 
+		m.Decrypted = .NULL.
+
 		m.Context = OpenSSL_CipherCtxNew()
 		IF !EMPTY(m.Context)
 
-			OpenSSL_DecryptInit(m.Context, m.Cipher, 0, m.SecretKey, m.IV)
+			IF OpenSSL_DecryptInit(m.Context, m.Cipher, 0, m.SecretKey, m.IV) = 1
 
-			m.BlockDecrypted = REPLICATE(CHR(0), LEN(m.Data) * 2)
-			m.BlockLength = 0
+				m.BlockDecrypted = REPLICATE(CHR(0), LEN(m.Data) * 2)
+				m.BlockLength = 0
 
-			OpenSSL_DecryptUpdate(m.Context, @m.BlockDecrypted, @m.BlockLength, m.PaddedData, LEN(m.PaddedData))
-			m.PaddedData = LEFT(m.BlockDecrypted, m.BlockLength)
+				IF OpenSSL_DecryptUpdate(m.Context, @m.BlockDecrypted, @m.BlockLength, m.PaddedData, LEN(m.PaddedData)) = 1
+					m.PaddedData = LEFT(m.BlockDecrypted, m.BlockLength)
 
-			m.BlockLength = 0
+					m.BlockLength = 0
 
-			OpenSSL_DecryptFinal(m.Context, @m.BlockDecrypted, @m.BlockLength)
-			m.PaddedData = m.PaddedData + LEFT(m.BlockDecrypted, m.BlockLength)
+					IF OpenSSL_DecryptFinal(m.Context, @m.BlockDecrypted, @m.BlockLength) = 1
+						m.PaddedData = m.PaddedData + LEFT(m.BlockDecrypted, m.BlockLength)
+						m.Decrypted = This.UnpadISO10126(m.PaddedData)
+					ENDIF
+				ENDIF
+			ENDIF
 
 			OpenSSL_CipherCtxRelease(m.Context)
-
-			RETURN This.UnpadISO10126(m.PaddedData)
-		ELSE
-			RETURN .NULL.
 		ENDIF
 
+		RETURN m.Decrypted
+	
 	ENDFUNC
 
 	FUNCTION EncryptPrivate (Data AS String, XMLKey AS XMLSecurityKey) AS String
@@ -240,9 +259,7 @@ DEFINE CLASS XMLSecurityLibOpenSSL AS XMLSecurityLib
 
 			IF OpenSSL_PKeyEncryptInit(This.PKeyCtx) > 0
 
-				IF m.XMLKey.CryptParams.GetKey("Padding") != 0
-					OpenSSL_PKeyRSA_Padding(This.PKeyCtx, -1, 0x1001, IIF(m.XMLKey.CryptParams("Padding") = PKCS1_OAEP_PADDING, 4, 1), 0)
-				ENDIF
+				This.SetPadding(m.XMLKey)
 	
 				m.EncryptedLength = 0
 				IF OpenSSL_PKeyEncrypt(This.PKeyCtx, 0, @m.EncryptedLength, m.Data, LEN(m.Data)) > 0
@@ -264,22 +281,12 @@ DEFINE CLASS XMLSecurityLibOpenSSL AS XMLSecurityLib
 	FUNCTION EncryptSymmetric (Data AS String, XMLKey AS XMLSecurityKey) AS String
 
 		LOCAL Context AS Integer
-		LOCAL CipherName AS String
 		LOCAL Cipher AS Integer
 
-		m.CipherName = m.XMLKey.CryptParams("Cipher")
-		DO CASE
-		CASE m.CipherName == "des-ede3-cbc"
-			m.Cipher = OpenSSL_DES_EDE3_CBC()
-		CASE m.CipherName == "aes-128-cbc"
-			m.Cipher = OpenSSL_AES_128_CBC()
-		CASE m.CipherName == "aes-192-cbc"
-			m.Cipher = OpenSSL_AES_192_CBC()
-		CASE m.CipherName == "aes-256-cbc"
-			m.Cipher = OpenSSL_AES_256_CBC()
-		OTHERWISE
+		m.Cipher = This.GetCipherType(m.XMLKey)
+		IF ISNULL(m.Cipher)
 			RETURN .NULL.
-		ENDCASE
+		ENDIF
 
 		LOCAL PaddedData AS String
 		LOCAL SecretKey AS String
@@ -299,6 +306,8 @@ DEFINE CLASS XMLSecurityLibOpenSSL AS XMLSecurityLib
 		LOCAL BlockEncrypted AS String
 		LOCAL BlockLength AS String
 
+		m.Encrypted = .NULL.
+
 		m.Context = OpenSSL_CipherCtxNew()
 
 		IF !EMPTY(m.Context)
@@ -306,24 +315,27 @@ DEFINE CLASS XMLSecurityLibOpenSSL AS XMLSecurityLib
 			m.BlockEncrypted = REPLICATE(CHR(0), LEN(m.PaddedData) * 2 + LEN(m.IV) * 2) 
 			m.BlockLength = 0
 
-			OpenSSL_EncryptInit(m.Context, m.Cipher, 0, m.SecretKey, m.IV)
-			OpenSSL_EncryptUpdate(m.Context, @m.BlockEncrypted, @m.BlockLength, m.PaddedData, LEN(m.PaddedData))
+			IF OpenSSL_EncryptInit(m.Context, m.Cipher, 0, m.SecretKey, m.IV) = 1
 
-			m.Encrypted = LEFT(m.BlockEncrypted, m.BlockLength)
-			m.BlockLength = 0
+				IF OpenSSL_EncryptUpdate(m.Context, @m.BlockEncrypted, @m.BlockLength, m.PaddedData, LEN(m.PaddedData)) = 1
 
-			OpenSSL_EncryptFinal(m.Context, @m.BlockEncrypted, @m.BlockLength)
-			m.Encrypted = m.Encrypted + LEFT(m.BlockEncrypted, m.BlockLength)
+					m.Encrypted = LEFT(m.BlockEncrypted, m.BlockLength)
+					m.BlockLength = 0
+
+					IF OpenSSL_EncryptFinal(m.Context, @m.BlockEncrypted, @m.BlockLength) = 1
+						m.Encrypted = m.IV + m.Encrypted + LEFT(m.BlockEncrypted, m.BlockLength)
+					ELSE
+						m.Encrypted = .NULL.
+					ENDIF
+
+				ENDIF
+			ENDIF
 
 			OpenSSL_CipherCtxRelease(m.Context)
 
-			RETURN m.IV + m.Encrypted
-
-		ELSE
-
-			RETURN .NULL.
-
 		ENDIF
+
+		RETURN m.Encrypted
 
 	ENDFUNC
 
@@ -392,8 +404,9 @@ DEFINE CLASS XMLSecurityLibOpenSSL AS XMLSecurityLib
 					m.PKey = OpenSSL_BioLoadPublicKey(m.Bio, 0, 0, 0)
 				ENDIF
 
-				OpenSSL_BioRelease(m.Bio)
 			ENDIF
+
+			OpenSSL_BioRelease(m.Bio)
 		ENDIF
 
 		IF !EMPTY(m.PKey)
@@ -466,31 +479,251 @@ DEFINE CLASS XMLSecurityLibOpenSSL AS XMLSecurityLib
 
 	FUNCTION SHA1 (ToHash AS String) AS String
 
-		RETURN This.Hash(HASH_SHA1, m.ToHash)
+		RETURN STRCONV(This.Hash(HASH_SHA1, m.ToHash), 15)
 
 	ENDFUNC
 
 	FUNCTION SignData (Data AS String, XMLKey AS XMLSecurityKey) AS String
 
-		ERROR "Not implemented."
+		LOCAL Context AS Integer
+		LOCAL DigestType AS Integer
+		LOCAL Digest AS String
+		LOCAL DigestLen AS Integer
+		LOCAL CheckLen AS Integer
+		LOCAL IsHMAC AS Boolean
+
+		m.Digest = .NULL.
+
+		m.Context = OpenSSL_DigestCtxNew()
+		IF !EMPTY(m.Context)
+
+			m.DigestType = OpenSSL_SHA1()
+			IF m.XMLKey.CryptParams.GetKey("Type") != 0
+
+				IF m.XMLKey.CryptParams.GetKey("Digest") != 0
+					m.DigestType = OpenSSL_DigestByName(m.XMLKey.CryptParams("Digest"))
+				ENDIF
+
+				m.IsHMAC = .F.
+
+			ELSE
+			
+				m.IsHMAC = .T.
+
+			ENDIF
+
+			IF !m.IsHMAC OR OpenSSL_DigestInit(m.Context, m.DigestType, 0) = 1
+
+				IF OpenSSL_DigestSignInit(m.Context, 0, m.DigestType, 0, m.XMLKey.Key) = 1
+
+					IF OpenSSL_DigestSignUpdate(m.Context, m.Data, LEN(m.Data)) = 1
+
+						m.DigestLen = 0
+						IF OpenSSL_DigestSignFinal(m.Context, 0, @m.DigestLen) = 1
+
+							IF m.DigestLen > 0
+								m.CheckLen = m.DigestLen
+								m.Digest = REPLICATE(CHR(0), m.DigestLen)
+								IF OpenSSL_DigestSignFinal(m.Context, @m.Digest, @m.DigestLen) != 1
+									m.Digest = .NULL.
+								ELSE
+									IF m.CheckLen != m.DigestLen
+										m.Digest = .NULL.
+									ENDIF
+								ENDIF
+							ENDIF
+						ENDIF
+					ENDIF
+				ENDIF
+			ENDIF
+
+			OpenSSL_DigestCtxRelease(m.Context)
+ 		ENDIF
+
+		RETURN m.Digest
 
 	ENDFUNC
 
 	FUNCTION VerifySignature (Data AS String, Signature AS String,	XMLKey AS XMLSecurityKey) AS Boolean
 
-		ERROR "Not implemented."
+		LOCAL Context AS Integer
+		LOCAL DigestType AS Integer
+		LOCAL Verified AS Integer
+
+		m.Verified = .F.
+
+		IF m.XMLKey.CryptParams.GetKey("Type") != 0
+
+			m.Context = OpenSSL_DigestCtxNew()
+			IF !EMPTY(m.Context)
+	
+				IF m.XMLKey.CryptParams.GetKey("Digest") != 0
+					m.DigestType = OpenSSL_DigestByName(m.XMLKey.CryptParams("Digest"))
+				ELSE
+					m.DigestType = OpenSSL_SHA1()
+				ENDIF
+
+				IF OpenSSL_DigestVerifyInit(m.Context, 0, m.DigestType, 0, m.XMLKey.Key) = 1
+
+					IF OpenSSL_DigestVerifyUpdate(m.Context, m.Data, LEN(m.Data)) = 1
+
+						m.Verified = (OpenSSL_DigestVerifyFinal(m.Context, m.Signature, LEN(m.Signature)) = 1)
+
+					ENDIF
+				ENDIF
+
+			ENDIF
+
+			OpenSSL_DigestCtxRelease(m.Context)
+
+		ELSE
+			m.Verified = m.Signature == NVL(This.SignData(m.Data, m.XMLKey), "")
+ 		ENDIF
+
+		RETURN m.Verified	
 
 	ENDFUNC
 
 	FUNCTION X509Export (Cert AS String) AS String
 
-		RETURN m.Cert
+		LOCAL BioIn AS Integer
+		LOCAL BioOut
+		LOCAL Bytes AS Integer
+		LOCAL X509 AS Integer
+		LOCAL Export AS String
+		LOCAL ExportLen AS Integer
+
+		m.Export = .NULL.
+
+		m.BioIn = OpenSSL_BioNew(OpenSSL_BioMem())
+		IF !EMPTY(m.BioIn)
+
+			m.Bytes = OpenSSL_BioWrite(m.BioIn, m.Cert, LEN(m.Cert))
+
+			IF m.Bytes > 0
+				m.X509 = OpenSSL_BioLoadX509(m.BioIn, 0, 0, 0)
+				IF !EMPTY(m.X509)
+
+					m.BioOut = OpenSSL_BioNew(OpenSSL_BioMem())
+					IF !EMPTY(m.BioOut)
+						IF OpenSSL_BioWriteX509(m.BioOut, m.X509) = 1
+							m.ExportLen = OpenSSL_BioPending(m.BioOut)
+							IF m.ExportLen > 0
+								m.Export = SPACE(m.ExportLen)
+								OpenSSL_BioRead(m.BioOut, @m.Export, m.ExportLen)
+							ENDIF
+						ENDIF
+
+						OpenSSL_BioRelease(m.BioOut)
+					ENDIF
+					OpenSSL_X509Release(m.X509)
+
+				ENDIF
+
+			ENDIF
+
+			OpenSSL_BioRelease(m.BioIn)
+		ENDIF
+
+		RETURN m.Export
 
 	ENDFUNC
 
-	FUNCTION X509Parse (Cert AS String) AS String
+	FUNCTION X509Parse (Cert AS String) AS Collection
 
-		RETURN ""
+		LOCAL BioIn AS Integer
+		LOCAL BioOut
+		LOCAL Bytes AS Integer
+		LOCAL X509 AS Integer
+		LOCAL Parsed AS Collection
+		LOCAL Part AS String
+		LOCAL Length AS Integer
+
+		m.Parsed = .NULL.
+
+		m.BioIn = OpenSSL_BioNew(OpenSSL_BioMem())
+		IF !EMPTY(m.BioIn)
+
+			m.Bytes = OpenSSL_BioWrite(m.BioIn, m.Cert, LEN(m.Cert))
+
+			IF m.Bytes > 0
+				m.X509 = OpenSSL_BioLoadX509(m.BioIn, 0, 0, 0)
+				IF !EMPTY(m.X509)
+
+					m.BioOut = OpenSSL_BioNew(OpenSSL_BioMem())
+					IF !EMPTY(m.BioOut)
+
+						m.Parsed = CREATEOBJECT("Collection")
+						m.Parsed.Add(TRANSFORM(OpenSSL_X509GetVersion(m.X509)), "Version")
+
+						IF OpenSSL_BioWriteX509Name(m.BioOut, OpenSSL_X509GetSubjectName(m.X509), 0, 0) = 1
+							This.X509GetName(m.BioOut, m.Parsed, "Subject")
+						ENDIF
+
+						IF OpenSSL_BioWriteX509Name(m.BioOut, OpenSSL_X509GetIssuerName(m.X509), 0, 0) = 1
+							This.X509GetName(m.BioOut, m.Parsed, "Issuer")
+						ENDIF
+
+						OpenSSL_BioRelease(m.BioOut)
+
+					ENDIF
+
+					OpenSSL_X509Release(m.X509)
+
+				ENDIF
+
+			ENDIF
+
+			OpenSSL_BioRelease(m.BioIn)
+		ENDIF
+
+		RETURN m.Parsed
+
+	ENDFUNC
+
+	HIDDEN FUNCTION SetPadding (XMLKey AS XMLSecurityKey)
+
+		IF m.XMLKey.CryptParams.GetKey("Padding") != 0
+			OpenSSL_PKeyCtxCtrl(This.PKeyCtx, -1, 0x1001, IIF(m.XMLKey.CryptParams("Padding") = PKCS1_OAEP_PADDING, 4, 1), 0)
+		ENDIF
+
+	ENDFUNC
+
+	HIDDEN FUNCTION GetCipherType (XMLKey AS XMLSecurityKey) as Integer
+
+		LOCAL Cipher AS Integer
+		LOCAL CipherName AS String
+
+		m.CipherName = m.XMLKey.CryptParams("Cipher")
+		DO CASE
+		CASE m.CipherName == "des-ede3-cbc"
+			m.Cipher = OpenSSL_DES_EDE3_CBC()
+		CASE m.CipherName == "aes-128-cbc"
+			m.Cipher = OpenSSL_AES_128_CBC()
+		CASE m.CipherName == "aes-192-cbc"
+			m.Cipher = OpenSSL_AES_192_CBC()
+		CASE m.CipherName == "aes-256-cbc"
+			m.Cipher = OpenSSL_AES_256_CBC()
+		OTHERWISE
+			m.Cipher = .NULL.
+		ENDCASE
+
+		RETURN m.Cipher
+
+	ENDFUNC
+
+	HIDDEN FUNCTION X509GetName (Bio AS Integer, Parsing AS Collection, PartName AS String)
+
+		LOCAL Part AS String
+		LOCAL Length AS Integer
+
+		m.Length = OpenSSL_BioPending(m.Bio)
+		IF m.Length > 0
+			m.Part = SPACE(m.Length)
+			IF OpenSSL_BioRead(m.Bio, @m.Part, m.Length) > 0
+				m.Parsing.Add(m.Part, m.PartName)
+			ENDIF
+		ENDIF
 
 	ENDFUNC
 

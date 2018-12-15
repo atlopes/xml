@@ -275,7 +275,7 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 
 	ENDFUNC
 
-	FUNCTION X509Parse (Cert AS String) AS String
+	FUNCTION X509Parse (Cert AS String) AS Collection
 
 		LOCAL Parsed AS Collection
 		LOCAL SubParsed AS Collection
