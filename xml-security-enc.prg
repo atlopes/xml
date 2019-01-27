@@ -2,7 +2,11 @@
 * XMLSecEnc
 *
 
-DO LOCFILE("xml-security-dsig.prg")
+IF _VFP.StartMode = 0
+	DO LOCFILE("xml-security-dsig.prg")
+ELSE
+	DO xml-security-dsig.prg
+ENDIF
 
 IF !SYS(16) $ SET("Procedure")
 	SET PROCEDURE TO (SYS(16)) ADDITIVE

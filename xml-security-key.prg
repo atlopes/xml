@@ -2,7 +2,11 @@
 * XMLSecurityKey
 *
 
-DO LOCFILE("xml-security-lib.prg")
+IF _VFP.StartMode = 0
+	DO LOCFILE("xml-security-lib.prg")
+ELSE
+	DO xml-security-lib.prg
+ENDIF
 
 IF !SYS(16) $ SET("Procedure")
 	SET PROCEDURE TO (SYS(16)) ADDITIVE

@@ -99,7 +99,11 @@
 *
 
 * dependency on Namer class
-DO (LOCFILE("namer.prg"))
+IF _VFP.StartMode = 0
+	DO LOCFILE("namer.prg")
+ELSE
+	DO namer.prg
+ENDIF
 
 * install itself
 IF !SYS(16) $ SET("Procedure")

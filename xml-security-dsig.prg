@@ -2,11 +2,17 @@
 * XMLSecurityDSig
 *
 
-DO LOCFILE("guid.prg")
-DO LOCFILE("xml-canonicalizer.prg")
-DO LOCFILE("url.prg")
-
-DO LOCFILE("xml-security-key.prg")
+IF _VFP.StartMode = 0
+	DO LOCFILE("guid.prg")
+	DO LOCFILE("xml-canonicalizer.prg")
+	DO LOCFILE("url.prg")
+	DO LOCFILE("xml-security-key.prg")
+ELSE
+	DO guid.prg
+	DO xml-canonicalizer.prg
+	DO url.prg
+	DO xml-security-key.prg
+ENDIF
 
 IF !SYS(16) $ SET("Procedure")
 	SET PROCEDURE TO (SYS(16)) ADDITIVE

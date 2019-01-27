@@ -21,7 +21,11 @@
 *
 
 * dependency on XMLSerializer class
-DO (LOCFILE("xml-serializer.prg"))
+IF _VFP.StartMode = 0
+	DO LOCFILE("xml-serializer.prg")
+ELSE
+	DO xml-serializer.prg
+ENDIF
 
 * install itself
 IF !SYS(16) $ SET("Procedure")
