@@ -5,7 +5,11 @@
 *
 * m.jx = CREATEOBJECT("JsonToXML")
 * m.xml = m.jx.Convert(m.JSonSource, "Root") && returns MSXML2.DOMDocument60
-* 
+* if isnull(m.xml)
+*   ? m.jx.ParseError, '@', m.jx.ParsePosition
+* else
+*   ? m.xml.xml
+* endif
 
 * dependency on Namer class
 IF _VFP.StartMode = 0
@@ -19,9 +23,16 @@ IF !SYS(16) $ SET("Procedure")
 	SET PROCEDURE TO (SYS(16)) ADDITIVE
 ENDIF
 
+#DEFINE	JX_IN_OBJECT	1
+#DEFINE	JX_IS_ARRAY		2
+#DEFINE	JX_MUST_FOLLOW	4	
+
 DEFINE CLASS JsonToXML AS Custom
 
 	XML = .NULL.
+	Anonymous = ""
+	ParseError = ""
+	ParsePosition = ""
 
 	HIDDEN RegExp, XMLName
 	RegExp = .NULL.
@@ -30,6 +41,9 @@ DEFINE CLASS JsonToXML AS Custom
 	_memberdata = '<VFPData>' + ;
 						'<memberdata name="convert" type="method" display="Convert"/>' + ;
 						'<memberdata name="xml" type="property" display="XML"/>' + ;
+						'<memberdata name="anonymous" type="property" display="Anonymous"/>' + ;
+						'<memberdata name="parseerror" type="property" display="ParseError"/>' + ;
+						'<memberdata name="parseposition" type="property" display="ParsePosition"/>' + ;
 						'</VFPData>'
 
 	FUNCTION Init
@@ -54,116 +68,183 @@ DEFINE CLASS JsonToXML AS Custom
 	FUNCTION Convert (JsonSource AS String, RootName AS String) AS MSXML2.DOMDocument60
 
 		LOCAL _JSon AS String
+		LOCAL Catcher AS Exception
+		LOCAL Converted AS MSXML2.DOMDocument60
 
 		This.XMLName.SetOriginalName(EVL(m.RootName, "JSON"))
 		m._JSon = ALLTRIM(m.JsonSource, 0, " ", CHR(13), CHR(10), CHR(9), CHR(26)) 
 		This.XML.LoadXML("<" + This.XMLName.GetName() + "/>")
 
-		DO CASE
+		STORE "" TO This.ParseError, This.ParsePosition
 
-		CASE LEFT(m._JSon, 1) == "{" AND RIGHT(m._JSon, 1) == "}"
-			This.ConvertObject(SUBSTR(m._JSon, 2, LEN(m._JSon) - 2), "", This.XML.DocumentElement)
+		TRY
+			DO CASE
 
-		CASE LEFT(m._JSon, 1) == "[" AND RIGHT(m._JSon, 1) == "]"
-			This.ConvertObject(SUBSTR(m._JSon, 2, LEN(m._JSon) - 2), "array", This.XML.DocumentElement)
+			CASE LEFT(m._JSon, 1) == "{" AND RIGHT(m._JSon, 1) == "}"
+				This.ConvertObject(SUBSTR(m._JSon, 2, LEN(m._JSon) - 2), "", This.XML.DocumentElement, JX_IN_OBJECT)
 
-		ENDCASE
+			CASE LEFT(m._JSon, 1) == "[" AND RIGHT(m._JSon, 1) == "]"
+				This.ConvertObject(SUBSTR(m._JSon, 2, LEN(m._JSon) - 2), "array", This.XML.DocumentElement, JX_IS_ARRAY)
 
-		RETURN This.XML
+			OTHERWISE
+				This.ConvertObject(m._JSon, "", This.XML.DocumentElement, JX_MUST_FOLLOW)
+
+			ENDCASE
+
+			m.Converted = This.XML
+
+		CATCH TO m.Catcher
+
+			This.ParseError = m.Catcher.UserValue
+
+			m.Converted = .NULL.
+
+		ENDTRY
+
+		RETURN m.Converted
 
 	ENDFUNC
 
-	HIDDEN FUNCTION ConvertObject (JsonObject AS String, ElementName AS String, XMLRoot AS MSXML2.IXMLDOMElement) AS String
+	HIDDEN FUNCTION ConvertObject (JsonObject AS String, ElementName AS String, XMLRoot AS MSXML2.IXMLDOMElement, Flags AS Integer) AS String
 
 		LOCAL _JSon AS String
 		LOCAL JSValue AS String
 		LOCAL ObjectName AS String
+		LOCAL Named AS Logical
+		LOCAL MustFollow AS Logical
 		LOCAL XMLElement AS MSXML2.IXMLDOMElement
+
+		m.MustFollow = BITAND(m.Flags, JX_MUST_FOLLOW) != 0
 
 		m._JSon = ALLTRIM(m.JsonObject, 0, " ", CHR(13), CHR(10), CHR(9))
 
-		IF !EMPTY(m.ElementName)
+		IF BITAND(m.Flags, JX_IS_ARRAY) != 0
 
 			DO WHILE !(LEFT(m._JSon, 1) $ "}]") AND !EMPTY(m._JSon)
 				m.XMLElement = m.XMLRoot.ownerDocument.createElement(m.ElementName)
-				m._JSon = This.ConvertObject(m._JSon, "", m.XMLElement)
+				m._JSon = This.ConvertObject(m._JSon, "", m.XMLElement, JX_IN_OBJECT)
 				m.XMLRoot.appendChild(m.XMLElement)
 			ENDDO
 
-			RETURN SUBSTR(m._JSon, 2)
+			RETURN ALLTRIM(SUBSTR(m._JSon, 2), 0, " ", CHR(13), CHR(10), CHR(9))
 
 		ENDIF
 
 		IF LEFT(m._JSon, 1) == ","
+
+			IF m.MustFollow
+				This.ParsePosition = m._JSon
+				THROW "Expected element or value not found"
+			ENDIF
+
 			m._JSon = ALLTRIM(SUBSTR(m._JSon, 2), 0, " ", CHR(13), CHR(10), CHR(9))
+			m.MustFollow = .T.
+
 		ENDIF
+
 		IF LEFT(m._JSon, 1) == "{"
 			m._JSon = ALLTRIM(SUBSTR(m._JSon, 2), 0, " ", CHR(13), CHR(10), CHR(9))
 		ENDIF
 
+		m.JSValue = .NULL.
+		This.ParsePosition = m._JSon
 		IF LEFT(m._JSon, 1) == '"'
 			m.ObjectName = This.GetValue(m._JSon)
 			IF !ISNULL(m.ObjectName)
-				m._JSon = SUBSTR(m._JSon, LEN(m.ObjectName) + 1)
+				m._JSon = ALLTRIM(SUBSTR(m._JSon, LEN(m.ObjectName) + 1), 0, " ", CHR(13), CHR(10), CHR(9))
 				m.ObjectName = This.UnencodeValue(m.ObjectName)
+				IF LEFT(m._JSon, 1) == ":"
+					m.Named = .T.
+				ELSE
+					m.Named = .F.
+					m.JSValue = m.ObjectName
+					m.ObjectName = This.Anonymous
+				ENDIF
 			ENDIF
 		ELSE
-			m.ObjectName = ""
+			m.ObjectName = This.Anonymous
+			m.Named = .F.
 		ENDIF
 		IF ISNULL(m.ObjectName)
-			ERROR "Invalid object name"
+			THROW "Invalid object name"
 		ENDIF
 
 		This.XMLName.SetOriginalName(m.ObjectName)
 		m.ObjectName = This.XMLName.GetName()
-		
-		m._JSon = ALLTRIM(SUBSTR(m._JSon, AT(":", m._JSon) + 1), 0, " ", CHR(13), CHR(10), CHR(9))
+
+		IF m.Named
+			m._JSon = ALLTRIM(SUBSTR(m._JSon, AT(":", m._JSon) + 1), 0, " ", CHR(13), CHR(10), CHR(9))
+		ENDIF
 
 		IF LEFT(m._JSon, 1) == "["
 
-			m._JSon = This.ConvertObject(SUBSTR(m._JSon, 2), m.ObjectName, m.XMLRoot)
+			m._JSon = This.ConvertObject(SUBSTR(m._JSon, 2), m.ObjectName, m.XMLRoot, JX_IS_ARRAY)
 
 		ELSE 
 
 			IF LEFT(m._JSon, 1) == "{"
 
 				m.XMLElement = m.XMLRoot.ownerDocument.createElement(m.ObjectName)
-				m._JSon = This.ConvertObject(SUBSTR(m._JSon, 2), "", m.XMLElement)
+				m._JSon = This.ConvertObject(SUBSTR(m._JSon, 2), "", m.XMLElement, JX_IN_OBJECT + JX_MUST_FOLLOW)
 				m.XMLRoot.appendChild(m.XMLElement)
 
 			ELSE
 
 				IF !LEFT(m._JSon, 1) $ "]}"
 
-					m.JSValue = This.GetValue(m._JSon)
-					IF ISNULL(m.JSValue)
-						ERROR "Unexpected value format"
-					ENDIF
+					This.ParsePosition = m._JSon
 
-					m._JSon = ALLTRIM(SUBSTR(m._JSon, LEN(m.JSValue) + 1), 0, " ", CHR(13), CHR(10), CHR(9))
-
-					m.JSValue = This.UnencodeValue(m.JSValue)
 					IF ISNULL(m.JSValue)
-						ERROR "Invalid value encoding"
+
+						m.JSValue = This.GetValue(m._JSon)
+						IF ISNULL(m.JSValue)
+							THROW "Unexpected value format"
+						ENDIF
+
+						m._JSon = ALLTRIM(SUBSTR(m._JSon, LEN(m.JSValue) + 1), 0, " ", CHR(13), CHR(10), CHR(9))
+
+						m.JSValue = This.UnencodeValue(m.JSValue)
+						IF ISNULL(m.JSValue)
+							THROW "Invalid value encoding"
+						ENDIF
 					ENDIF
 
 					m.XMLElement = m.XMLRoot.ownerDocument.createElement(m.ObjectName)
 					m.XMLElement.text = m.JSValue
 					m.XMLRoot.appendChild(m.XMLElement)
 
+				ELSE
+
+					IF m.MustFollow
+						THROW "Expected element or value not found"
+					ENDIF
+
 				ENDIF
 
 			ENDIF
 
+			This.ParsePosition = m._JSon
+
 			DO CASE
 			CASE LEFT(m._JSon, 1) == ","
-				 m._JSon = This.ConvertObject(ALLTRIM(SUBSTR(m._JSon, 2), 0, " ", CHR(13), CHR(10), CHR(9)), "", m.XMLRoot)
+
+				IF BITAND(m.Flags, JX_IN_OBJECT + JX_IS_ARRAY) = 0
+					THROW "Elements not allowed"
+				ENDIF
+
+				 m._JSon = This.ConvertObject(ALLTRIM(SUBSTR(m._JSon, 2), 0, " ", CHR(13), CHR(10), CHR(9)), "", m.XMLRoot, JX_IN_OBJECT + JX_MUST_FOLLOW)
+
 			CASE LEFT(m._JSon, 1) == "]" AND !EMPTY(m.ElementName)
 				* signal end of array
+
 			CASE LEFT(m._JSon, 1) == "}" AND EMPTY(m.ElementName)
+
 				m._JSon = SUBSTR(m._JSon, 2)
+
 			CASE !EMPTY(m._JSon)
-				ERROR "Unexpected character"
+
+				THROW "Unexpected character"
+
 			ENDCASE
 
 		ENDIF
@@ -204,7 +285,7 @@ DEFINE CLASS JsonToXML AS Custom
 
 		ELSE
 
-			This.RegExp.Pattern = '^-?[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?'
+			This.RegExp.Pattern = '^((-?[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)|(true)|(false)|(null))'
 			m.Reg = This.RegExp.Execute(m.JSon)
 			IF m.Reg.Count = 1
 				RETURN m.Reg.Item(0).Value
