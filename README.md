@@ -25,6 +25,8 @@ Status: usable.
 
 **[XMLSecurity](xml-security.md "XMLSecurity")** set of classes to sign, encrypt, and secure XML documents.
 
+**[JsonToXML](json-to-xml.md "JsonToXML")** a simple JSON to XML converter.
+
 ## Ideas for the future
 
 - SOAP client
