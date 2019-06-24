@@ -24,8 +24,9 @@ IF !SYS(16) $ SET("Procedure")
 ENDIF
 
 #DEFINE	JX_IN_OBJECT	1
-#DEFINE	JX_IS_ARRAY		2
-#DEFINE	JX_MUST_FOLLOW	4	
+#DEFINE	JX_IN_ARRAY		2
+#DEFINE	JX_MUST_FOLLOW	4
+#DEFINE	JX_IS_ARRAY		8
 
 DEFINE CLASS JsonToXML AS Custom
 
@@ -84,10 +85,10 @@ DEFINE CLASS JsonToXML AS Custom
 				This.ConvertObject(SUBSTR(m._JSon, 2, LEN(m._JSon) - 2), "", This.XML.DocumentElement, JX_IN_OBJECT)
 
 			CASE LEFT(m._JSon, 1) == "[" AND RIGHT(m._JSon, 1) == "]"
-				This.ConvertObject(SUBSTR(m._JSon, 2, LEN(m._JSon) - 2), "array", This.XML.DocumentElement, JX_IS_ARRAY)
+				This.ConvertObject(SUBSTR(m._JSon, 2, LEN(m._JSon) - 2), "", This.XML.DocumentElement, JX_IN_ARRAY + JX_IS_ARRAY)
 
 			OTHERWISE
-				This.ConvertObject(m._JSon, "", This.XML.DocumentElement, JX_MUST_FOLLOW)
+				This.ConvertObject(m._JSon, "", This.XML.DocumentElement, 0)
 
 			ENDCASE
 
@@ -95,7 +96,12 @@ DEFINE CLASS JsonToXML AS Custom
 
 		CATCH TO m.Catcher
 
-			This.ParseError = m.Catcher.UserValue
+			IF m.Catcher.ErrorNo = 2071
+				This.ParseError = m.Catcher.UserValue
+			ELSE
+				This.ParseError = "Converter Error: " + m.Catcher.Message
+				This.ParsePosition = m.Catcher.LineContents
+			ENDIF
 
 			m.Converted = .NULL.
 
@@ -108,23 +114,29 @@ DEFINE CLASS JsonToXML AS Custom
 	HIDDEN FUNCTION ConvertObject (JsonObject AS String, ElementName AS String, XMLRoot AS MSXML2.IXMLDOMElement, Flags AS Integer) AS String
 
 		LOCAL _JSon AS String
+		LOCAL Next_JSon AS Character
 		LOCAL JSValue AS String
 		LOCAL ObjectName AS String
 		LOCAL Named AS Logical
-		LOCAL MustFollow AS Logical
 		LOCAL XMLElement AS MSXML2.IXMLDOMElement
 
-		m.MustFollow = BITAND(m.Flags, JX_MUST_FOLLOW) != 0
-
 		m._JSon = ALLTRIM(m.JsonObject, 0, " ", CHR(13), CHR(10), CHR(9))
+
+		IF EMPTY(m._JSon) AND BITAND(m.Flags, JX_MUST_FOLLOW) = 0
+			RETURN ""
+		ENDIF
 
 		IF BITAND(m.Flags, JX_IS_ARRAY) != 0
 
 			DO WHILE !(LEFT(m._JSon, 1) $ "}]") AND !EMPTY(m._JSon)
-				m.XMLElement = m.XMLRoot.ownerDocument.createElement(m.ElementName)
-				m._JSon = This.ConvertObject(m._JSon, "", m.XMLElement, JX_IN_OBJECT)
+				m.XMLElement = m.XMLRoot.ownerDocument.createElement(EVL(m.ElementName, "array"))
+				m._JSon = This.ConvertObject(m._JSon, "", m.XMLElement, JX_IN_ARRAY)
 				m.XMLRoot.appendChild(m.XMLElement)
 			ENDDO
+
+			IF EMPTY(m._Json) AND !EMPTY(m.ElementName)
+				THROW "Unclosed array"
+			ENDIF
 
 			RETURN ALLTRIM(SUBSTR(m._JSon, 2), 0, " ", CHR(13), CHR(10), CHR(9))
 
@@ -132,18 +144,24 @@ DEFINE CLASS JsonToXML AS Custom
 
 		IF LEFT(m._JSon, 1) == ","
 
-			IF m.MustFollow
+			IF BITAND(m.Flags, JX_MUST_FOLLOW) != 0
 				This.ParsePosition = m._JSon
 				THROW "Expected element or value not found"
 			ENDIF
 
 			m._JSon = ALLTRIM(SUBSTR(m._JSon, 2), 0, " ", CHR(13), CHR(10), CHR(9))
-			m.MustFollow = .T.
 
 		ENDIF
 
 		IF LEFT(m._JSon, 1) == "{"
+
+			IF BITAND(m.Flags, JX_IN_ARRAY) = 0
+				This.ParsePosition = m._JSon
+				THROW "Expected element or value not found"
+			ENDIF
+
 			m._JSon = ALLTRIM(SUBSTR(m._JSon, 2), 0, " ", CHR(13), CHR(10), CHR(9))
+
 		ENDIF
 
 		m.JSValue = .NULL.
@@ -176,21 +194,23 @@ DEFINE CLASS JsonToXML AS Custom
 			m._JSon = ALLTRIM(SUBSTR(m._JSon, AT(":", m._JSon) + 1), 0, " ", CHR(13), CHR(10), CHR(9))
 		ENDIF
 
-		IF LEFT(m._JSon, 1) == "["
+		m.Next_JSon = LEFT(m._JSon, 1)
+
+		IF m.Next_JSon == "["
 
 			m._JSon = This.ConvertObject(SUBSTR(m._JSon, 2), m.ObjectName, m.XMLRoot, JX_IS_ARRAY)
 
 		ELSE 
 
-			IF LEFT(m._JSon, 1) == "{"
+			IF m.Next_JSon == "{"
 
 				m.XMLElement = m.XMLRoot.ownerDocument.createElement(m.ObjectName)
-				m._JSon = This.ConvertObject(SUBSTR(m._JSon, 2), "", m.XMLElement, JX_IN_OBJECT + JX_MUST_FOLLOW)
+				m._JSon = This.ConvertObject(SUBSTR(m._JSon, 2), "", m.XMLElement, JX_IN_OBJECT)
 				m.XMLRoot.appendChild(m.XMLElement)
 
 			ELSE
 
-				IF !LEFT(m._JSon, 1) $ "]}"
+				IF !m.Next_JSon $ "]}"
 
 					This.ParsePosition = m._JSon
 
@@ -213,31 +233,26 @@ DEFINE CLASS JsonToXML AS Custom
 					m.XMLElement.text = m.JSValue
 					m.XMLRoot.appendChild(m.XMLElement)
 
-				ELSE
-
-					IF m.MustFollow
-						THROW "Expected element or value not found"
-					ENDIF
-
 				ENDIF
 
 			ENDIF
 
 			This.ParsePosition = m._JSon
+			m.Next_JSon = LEFT(m._JSon, 1)
 
 			DO CASE
-			CASE LEFT(m._JSon, 1) == ","
+			CASE m.Next_JSon == ","
 
-				IF BITAND(m.Flags, JX_IN_OBJECT + JX_IS_ARRAY) = 0
+				IF BITAND(m.Flags, JX_IN_OBJECT + JX_IN_ARRAY) = 0
 					THROW "Elements not allowed"
 				ENDIF
 
-				 m._JSon = This.ConvertObject(ALLTRIM(SUBSTR(m._JSon, 2), 0, " ", CHR(13), CHR(10), CHR(9)), "", m.XMLRoot, JX_IN_OBJECT + JX_MUST_FOLLOW)
+				 m._JSon = This.ConvertObject(ALLTRIM(SUBSTR(m._JSon, 2), 0, " ", CHR(13), CHR(10), CHR(9)), "", m.XMLRoot, BITOR(m.Flags, JX_MUST_FOLLOW))
 
-			CASE LEFT(m._JSon, 1) == "]" AND !EMPTY(m.ElementName)
+			CASE m.Next_JSon == "]" AND BITAND(m.Flags, JX_IN_ARRAY + JX_IS_ARRAY) != 0
 				* signal end of array
 
-			CASE LEFT(m._JSon, 1) == "}" AND EMPTY(m.ElementName)
+			CASE m.Next_JSon == "}" AND BITAND(m.Flags, JX_IS_ARRAY) = 0
 
 				m._JSon = SUBSTR(m._JSon, 2)
 
@@ -325,7 +340,7 @@ DEFINE CLASS JsonToXML AS Custom
 							m.Occ = m.Occ + 1
 						ENDIF
 					CASE m.EscChar $ "bfnrt"
-						m.Unencoded = STUFF(m.Unencoded, m.Esc, 2, CHRTRAN(m.EscChar, "bfnrt", 0h070c0a0d09))
+						m.Unencoded = STUFF(m.Unencoded, m.Esc, 2, CHRTRAN(m.EscChar, "bfnrt", 0h7f0c0a0d09))
 					CASE m.EscChar == "u" AND m.Esc + 6 <= LEN(m.Unencoded)
 						m.Unencoded = STUFF(m.Unencoded, m.Esc, 6, STRCONV(BINTOC(VAL("0x" + SUBSTR(m.Unencoded, m.Esc + 2, 4)), "2RS"), 6))
 					OTHERWISE
