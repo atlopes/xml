@@ -115,12 +115,13 @@ DEFINE CLASS JsonToXML AS Custom
 
 		LOCAL _JSon AS String
 		LOCAL Next_JSon AS Character
+		LOCAL Next_TokenLength AS Integer
 		LOCAL JSValue AS String
 		LOCAL ObjectName AS String
 		LOCAL Named AS Logical
 		LOCAL XMLElement AS MSXML2.IXMLDOMElement
 
-		m._JSon = ALLTRIM(m.JsonObject, 0, " ", CHR(13), CHR(10), CHR(9))
+		m._JSon = LTRIM(m.JsonObject, 0, " ", CHR(13), CHR(10), CHR(9))
 
 		IF EMPTY(m._JSon) AND BITAND(m.Flags, JX_MUST_FOLLOW) = 0
 			RETURN ""
@@ -138,7 +139,7 @@ DEFINE CLASS JsonToXML AS Custom
 				THROW "Unclosed array"
 			ENDIF
 
-			RETURN ALLTRIM(SUBSTR(m._JSon, 2), 0, " ", CHR(13), CHR(10), CHR(9))
+			RETURN LTRIM(SUBSTR(m._JSon, 2), 0, " ", CHR(13), CHR(10), CHR(9))
 
 		ENDIF
 
@@ -160,17 +161,18 @@ DEFINE CLASS JsonToXML AS Custom
 				THROW "Expected element or value not found"
 			ENDIF
 
-			m._JSon = ALLTRIM(SUBSTR(m._JSon, 2), 0, " ", CHR(13), CHR(10), CHR(9))
+			m._JSon = LTRIM(SUBSTR(m._JSon, 2), 0, " ", CHR(13), CHR(10), CHR(9))
 
 		ENDIF
 
 		m.JSValue = .NULL.
+		m.Next_TokenLength = 0
 		This.ParsePosition = m._JSon
+
 		IF LEFT(m._JSon, 1) == '"'
-			m.ObjectName = This.GetValue(m._JSon)
+			m.ObjectName = This.GetValue(m._JSon, @m.Next_TokenLength)
 			IF !ISNULL(m.ObjectName)
-				m._JSon = ALLTRIM(SUBSTR(m._JSon, LEN(m.ObjectName) + 1), 0, " ", CHR(13), CHR(10), CHR(9))
-				m.ObjectName = This.UnencodeValue(m.ObjectName)
+				m._JSon = LTRIM(SUBSTR(m._JSon, m.Next_TokenLength + 1), 0, " ", CHR(13), CHR(10), CHR(9))
 				IF LEFT(m._JSon, 1) == ":"
 					m.Named = .T.
 				ELSE
@@ -191,7 +193,7 @@ DEFINE CLASS JsonToXML AS Custom
 		m.ObjectName = This.XMLName.GetName()
 
 		IF m.Named
-			m._JSon = ALLTRIM(SUBSTR(m._JSon, AT(":", m._JSon) + 1), 0, " ", CHR(13), CHR(10), CHR(9))
+			m._JSon = LTRIM(SUBSTR(m._JSon, AT(":", m._JSon) + 1), 0, " ", CHR(13), CHR(10), CHR(9))
 		ENDIF
 
 		m.Next_JSon = LEFT(m._JSon, 1)
@@ -210,20 +212,19 @@ DEFINE CLASS JsonToXML AS Custom
 
 			ELSE
 
-				IF !m.Next_JSon $ "]}"
+				IF !m.Next_JSon $ "]}" OR !ISNULL(m.JSValue)
 
 					This.ParsePosition = m._JSon
 
 					IF ISNULL(m.JSValue)
 
-						m.JSValue = This.GetValue(m._JSon)
+						m.JSValue = This.GetValue(m._JSon, @m.Next_TokenLength)
 						IF ISNULL(m.JSValue)
 							THROW "Unexpected value format"
 						ENDIF
 
-						m._JSon = ALLTRIM(SUBSTR(m._JSon, LEN(m.JSValue) + 1), 0, " ", CHR(13), CHR(10), CHR(9))
+						m._JSon = LTRIM(SUBSTR(m._JSon, m.Next_TokenLength + 1), 0, " ", CHR(13), CHR(10), CHR(9))
 
-						m.JSValue = This.UnencodeValue(m.JSValue)
 						IF ISNULL(m.JSValue)
 							THROW "Invalid value encoding"
 						ENDIF
@@ -247,7 +248,7 @@ DEFINE CLASS JsonToXML AS Custom
 					THROW "Elements not allowed"
 				ENDIF
 
-				 m._JSon = This.ConvertObject(ALLTRIM(SUBSTR(m._JSon, 2), 0, " ", CHR(13), CHR(10), CHR(9)), "", m.XMLRoot, BITOR(m.Flags, JX_MUST_FOLLOW))
+				 m._JSon = This.ConvertObject(LTRIM(SUBSTR(m._JSon, 2), 0, " ", CHR(13), CHR(10), CHR(9)), "", m.XMLRoot, BITOR(m.Flags, JX_MUST_FOLLOW))
 
 			CASE m.Next_JSon == "]" AND BITAND(m.Flags, JX_IN_ARRAY + JX_IS_ARRAY) != 0
 				* signal end of array
@@ -264,104 +265,72 @@ DEFINE CLASS JsonToXML AS Custom
 
 		ENDIF
 
-		RETURN ALLTRIM(m._JSon, 0,  " ", CHR(13), CHR(10), CHR(9))
+		RETURN LTRIM(m._JSon, 0,  " ", CHR(13), CHR(10), CHR(9))
 
 	ENDFUNC
 
-	HIDDEN FUNCTION GetValue (JSon AS String) AS String
+	HIDDEN FUNCTION GetValue (JSon AS String, TokenLength AS Integer) AS String
 
 		LOCAL Reg
+		LOCAL JSBuffer AS String
 		LOCAL ChAt AS Character
 		LOCAL EndPos AS Integer
+		LOCAL Token AS String
+		LOCAL JSonLength AS Integer
 
 		IF LEFT(m.JSon, 1) == '"'
 
+			m.JSonLength = LEN(m.JSon)
 			m.ChAt = SUBSTR(m.JSon, 2, 1)
 			m.EndPos = 2
-			DO WHILE m.EndPos <= LEN(m.JSon) AND !m.ChAt == '"'
+			m.Token = ""
+
+			DO WHILE m.EndPos <= m.JSonLength AND !m.ChAt == '"'
 				IF m.ChAt == "\"
-					m.ChAt = SUBSTR(m.JSon, m.EndPos + 1, 1)
-					IF m.ChAt $ '"\/bfnrtu'
-						m.EndPos = m.EndPos + 2
-					ELSE
+					IF m.EndPos + 2 >= m.JSonLength
 						RETURN .NULL.
+					ENDIF
+					m.ChAt = SUBSTR(m.JSBuffer, 2, 1)
+					IF m.ChAt $ '"\/bfnrt'
+						m.EndPos = m.EndPos + 2
+						m.Token = m.Token + CHRTRAN(m.ChAt, "bfnrt", 0h7f0c0a0d09)
+					ELSE
+						IF m.ChAt == "u" AND m.EndPos + 6 <= m.JSonLength
+							m.EndPos = m.EndPos + 6
+							m.Token = m.Token + STRCONV(BINTOC(VAL("0x" + SUBSTR(m.JSBuffer, 3, 4)), "2RS"), 6)
+						ELSE
+							RETURN .NULL.
+						ENDIF
 					ENDIF
 				ELSE
 					m.EndPos = m.EndPos + 1
+					m.Token = m.Token + m.ChAt
 				ENDIF
-				m.ChAt = SUBSTR(m.JSon, m.EndPos, 1)
+				m.JSBuffer = SUBSTR(m.JSon, m.EndPos, 6)
+				m.ChAt = LEFT(m.JSBuffer, 1)
 			ENDDO
 	
-			IF m.EndPos > LEN(m.JSon)
+			IF m.EndPos > m.JSonLength
 				RETURN .NULL.
 			ENDIF
 
-			RETURN LEFT(m.JSon, m.EndPos)
+			m.TokenLength = m.EndPos
+			RETURN m.Token
 
 		ELSE
 
 			This.RegExp.Pattern = '^((-?[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)|(true)|(false)|(null))'
 			m.Reg = This.RegExp.Execute(m.JSon)
 			IF m.Reg.Count = 1
-				RETURN m.Reg.Item(0).Value
+				m.Token = m.Reg.Item(0).Value
+				m.TokenLength = LEN(m.Token)
+				RETURN m.Token
 			ELSE
 				RETURN .NULL.
 			ENDIF
 
 		ENDIF
 	
-	ENDFUNC
-
-	HIDDEN FUNCTION UnencodeValue (Original AS String) AS String
-
-		LOCAL Unencoded AS String
-		LOCAL Esc AS Integer
-		LOCAL Occ AS Integer
-		LOCAL EscapedQuotes AS Integer
-		LOCAL EscChar AS Character
-
-		DO CASE
-		CASE LEFT(m.Original, 1) == '"'
-
-			m.Unencoded = SUBSTR(m.Original, 2, LEN(m.Original) - 2)
-			m.EscapedQuotes = OCCURS('\"', m.Unencoded)
-
-			m.Occ = 1
-			m.Esc = AT("\", m.Unencoded, 1)
-			DO WHILE m.Esc != 0 AND !ISNULL(m.Unencoded)
-				IF m.Esc = LEN(m.Unencoded)
-					m.Unencoded = .NULL.
-				ELSE 
-					m.EscChar = SUBSTR(m.Unencoded, m.Esc + 1, 1)
-					DO CASE
-					CASE m.EscChar $ '"/\'
-						m.Unencoded = STUFF(m.Unencoded, m.Esc, 1, "")
-						IF m.EscChar == "\"
-							m.Occ = m.Occ + 1
-						ENDIF
-					CASE m.EscChar $ "bfnrt"
-						m.Unencoded = STUFF(m.Unencoded, m.Esc, 2, CHRTRAN(m.EscChar, "bfnrt", 0h7f0c0a0d09))
-					CASE m.EscChar == "u" AND m.Esc + 6 <= LEN(m.Unencoded)
-						m.Unencoded = STUFF(m.Unencoded, m.Esc, 6, STRCONV(BINTOC(VAL("0x" + SUBSTR(m.Unencoded, m.Esc + 2, 4)), "2RS"), 6))
-					OTHERWISE
-						m.Unencoded = .NULL.
-					ENDCASE
-				ENDIF
-				m.Esc = AT("\", NVL(m.Unencoded, ""), m.Occ)
-			ENDDO			
-
-			IF !ISNULL(m.Unencoded) AND m.EscapedQuotes != OCCURS('"', m.Unencoded)
-				m.Unencoded = .NULL.
-			ENDIF
-
-		OTHERWISE
-
-			m.Unencoded = m.Original
-
-		ENDCASE
-
-		RETURN m.Unencoded
-
 	ENDFUNC
 
 ENDDEFINE
