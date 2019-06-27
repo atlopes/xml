@@ -129,7 +129,7 @@ DEFINE CLASS JsonToXML AS Custom
 
 		IF BITAND(m.Flags, JX_IS_ARRAY) != 0
 
-			DO WHILE !(LEFT(m._JSon, 1) $ "}]") AND !EMPTY(m._JSon)
+			DO WHILE !LEFT(m._JSon, 1) == "]" AND !EMPTY(m._JSon)
 				m.XMLElement = m.XMLRoot.ownerDocument.createElement(EVL(m.ElementName, "array"))
 				m._JSon = This.ConvertObject(m._JSon, "", m.XMLElement, JX_IN_ARRAY)
 				m.XMLRoot.appendChild(m.XMLElement)
@@ -156,7 +156,7 @@ DEFINE CLASS JsonToXML AS Custom
 
 		IF LEFT(m._JSon, 1) == "{"
 
-			IF BITAND(m.Flags, JX_IN_ARRAY) = 0
+			IF BITAND(m.Flags, JX_MUST_FOLLOW + JX_IN_ARRAY) = 0
 				This.ParsePosition = m._JSon
 				THROW "Expected element or value not found"
 			ENDIF
@@ -200,14 +200,14 @@ DEFINE CLASS JsonToXML AS Custom
 
 		IF m.Next_JSon == "["
 
-			m._JSon = This.ConvertObject(SUBSTR(m._JSon, 2), m.ObjectName, m.XMLRoot, JX_IS_ARRAY)
+			m._JSon = This.ConvertObject(SUBSTR(m._JSon, 2), m.ObjectName, m.XMLRoot, BITAND(m.Flags, JX_IN_ARRAY) + JX_IS_ARRAY)
 
 		ELSE 
 
 			IF m.Next_JSon == "{"
 
 				m.XMLElement = m.XMLRoot.ownerDocument.createElement(m.ObjectName)
-				m._JSon = This.ConvertObject(SUBSTR(m._JSon, 2), "", m.XMLElement, JX_IN_OBJECT)
+				m._JSon = This.ConvertObject(SUBSTR(m._JSon, 2), "", m.XMLElement, BITAND(m.Flags, JX_IN_ARRAY) + JX_IN_OBJECT)
 				m.XMLRoot.appendChild(m.XMLElement)
 
 			ELSE
