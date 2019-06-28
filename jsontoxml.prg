@@ -143,129 +143,137 @@ DEFINE CLASS JsonToXML AS Custom
 
 		ENDIF
 
-		IF LEFT(m._JSon, 1) == ","
+		DO WHILE !EMPTY(m._JSon)
 
-			IF BITAND(m.Flags, JX_MUST_FOLLOW) != 0
-				This.ParsePosition = m._JSon
-				THROW "Expected element or value not found"
-			ENDIF
+			IF LEFT(m._JSon, 1) == ","
 
-			m._JSon = ALLTRIM(SUBSTR(m._JSon, 2), 0, " ", CHR(13), CHR(10), CHR(9))
-
-		ENDIF
-
-		IF LEFT(m._JSon, 1) == "{"
-
-			IF BITAND(m.Flags, JX_MUST_FOLLOW + JX_IN_ARRAY) = 0
-				This.ParsePosition = m._JSon
-				THROW "Expected element or value not found"
-			ENDIF
-
-			m._JSon = LTRIM(SUBSTR(m._JSon, 2), 0, " ", CHR(13), CHR(10), CHR(9))
-
-		ENDIF
-
-		m.JSValue = .NULL.
-		m.Next_TokenLength = 0
-		This.ParsePosition = m._JSon
-
-		IF LEFT(m._JSon, 1) == '"'
-			m.ObjectName = This.GetValue(m._JSon, @m.Next_TokenLength)
-			IF !ISNULL(m.ObjectName)
-				m._JSon = LTRIM(SUBSTR(m._JSon, m.Next_TokenLength + 1), 0, " ", CHR(13), CHR(10), CHR(9))
-				IF LEFT(m._JSon, 1) == ":"
-					m.Named = .T.
-				ELSE
-					m.Named = .F.
-					m.JSValue = m.ObjectName
-					m.ObjectName = This.Anonymous
-				ENDIF
-			ENDIF
-		ELSE
-			m.ObjectName = This.Anonymous
-			m.Named = .F.
-		ENDIF
-		IF ISNULL(m.ObjectName)
-			THROW "Invalid object name"
-		ENDIF
-
-		This.XMLName.SetOriginalName(m.ObjectName)
-		m.ObjectName = This.XMLName.GetName()
-
-		IF m.Named
-			m._JSon = LTRIM(SUBSTR(m._JSon, AT(":", m._JSon) + 1), 0, " ", CHR(13), CHR(10), CHR(9))
-		ENDIF
-
-		m.Next_JSon = LEFT(m._JSon, 1)
-
-		IF m.Next_JSon == "["
-
-			m._JSon = This.ConvertObject(SUBSTR(m._JSon, 2), m.ObjectName, m.XMLRoot, BITAND(m.Flags, JX_IN_ARRAY) + JX_IS_ARRAY)
-
-		ELSE 
-
-			IF m.Next_JSon == "{"
-
-				m.XMLElement = m.XMLRoot.ownerDocument.createElement(m.ObjectName)
-				m._JSon = This.ConvertObject(SUBSTR(m._JSon, 2), "", m.XMLElement, BITAND(m.Flags, JX_IN_ARRAY) + JX_IN_OBJECT)
-				m.XMLRoot.appendChild(m.XMLElement)
-
-			ELSE
-
-				IF !m.Next_JSon $ "]}" OR !ISNULL(m.JSValue)
-
+				IF BITAND(m.Flags, JX_MUST_FOLLOW) != 0
 					This.ParsePosition = m._JSon
-
-					IF ISNULL(m.JSValue)
-
-						m.JSValue = This.GetValue(m._JSon, @m.Next_TokenLength)
-						IF ISNULL(m.JSValue)
-							THROW "Unexpected value format"
-						ENDIF
-
-						m._JSon = LTRIM(SUBSTR(m._JSon, m.Next_TokenLength + 1), 0, " ", CHR(13), CHR(10), CHR(9))
-
-						IF ISNULL(m.JSValue)
-							THROW "Invalid value encoding"
-						ENDIF
-					ENDIF
-
-					m.XMLElement = m.XMLRoot.ownerDocument.createElement(m.ObjectName)
-					m.XMLElement.text = m.JSValue
-					m.XMLRoot.appendChild(m.XMLElement)
-
+					THROW "Expected element or value not found"
 				ENDIF
+
+				m._JSon = LTRIM(SUBSTR(m._JSon, 2), 0, " ", CHR(13), CHR(10), CHR(9))
 
 			ENDIF
 
+			IF LEFT(m._JSon, 1) == "{"
+
+				IF BITAND(m.Flags, JX_MUST_FOLLOW + JX_IN_ARRAY) = 0
+					This.ParsePosition = m._JSon
+					THROW "Expected element or value not found"
+				ENDIF
+
+				m._JSon = LTRIM(SUBSTR(m._JSon, 2), 0, " ", CHR(13), CHR(10), CHR(9))
+
+			ENDIF
+
+			m.JSValue = .NULL.
+			m.Next_TokenLength = 0
 			This.ParsePosition = m._JSon
+
+			IF LEFT(m._JSon, 1) == '"'
+
+				m.ObjectName = This.GetValue(m._JSon, @m.Next_TokenLength)
+				IF !ISNULL(m.ObjectName)
+					m._JSon = LTRIM(SUBSTR(m._JSon, m.Next_TokenLength + 1), 0, " ", CHR(13), CHR(10), CHR(9))
+					IF LEFT(m._JSon, 1) == ":"
+						m.Named = .T.
+					ELSE
+						m.Named = .F.
+						m.JSValue = m.ObjectName
+						m.ObjectName = This.Anonymous
+					ENDIF
+				ENDIF
+			ELSE
+				m.ObjectName = This.Anonymous
+				m.Named = .F.
+			ENDIF
+			IF ISNULL(m.ObjectName)
+				THROW "Invalid object name"
+			ENDIF
+
+			This.XMLName.SetOriginalName(m.ObjectName)
+			m.ObjectName = This.XMLName.GetName()
+
+			IF m.Named
+				m._JSon = LTRIM(SUBSTR(m._JSon, AT(":", m._JSon) + 1), 0, " ", CHR(13), CHR(10), CHR(9))
+			ENDIF
+
 			m.Next_JSon = LEFT(m._JSon, 1)
 
-			DO CASE
-			CASE m.Next_JSon == ","
+			IF m.Next_JSon == "["
 
-				IF BITAND(m.Flags, JX_IN_OBJECT + JX_IN_ARRAY) = 0
-					THROW "Elements not allowed"
+				m._JSon = This.ConvertObject(SUBSTR(m._JSon, 2), m.ObjectName, m.XMLRoot, BITAND(m.Flags, JX_IN_ARRAY + JX_IN_OBJECT) + JX_IS_ARRAY)
+
+			ELSE 
+
+				IF m.Next_JSon == "{"
+
+					m.XMLElement = m.XMLRoot.ownerDocument.createElement(m.ObjectName)
+					m._JSon = This.ConvertObject(SUBSTR(m._JSon, 2), "", m.XMLElement, BITAND(m.Flags, JX_IN_ARRAY) + JX_IN_OBJECT)
+					m.XMLRoot.appendChild(m.XMLElement)
+
+				ELSE
+
+					IF !m.Next_JSon $ "]}" OR !ISNULL(m.JSValue)
+
+						This.ParsePosition = m._JSon
+
+						IF ISNULL(m.JSValue)
+
+							m.JSValue = This.GetValue(m._JSon, @m.Next_TokenLength)
+							IF ISNULL(m.JSValue)
+								THROW "Unexpected value format"
+							ENDIF
+
+							m._JSon = LTRIM(SUBSTR(m._JSon, m.Next_TokenLength + 1), 0, " ", CHR(13), CHR(10), CHR(9))
+
+							IF ISNULL(m.JSValue)
+								THROW "Invalid value encoding"
+							ENDIF
+						ENDIF
+
+						m.XMLElement = m.XMLRoot.ownerDocument.createElement(m.ObjectName)
+						m.XMLElement.text = m.JSValue
+						m.XMLRoot.appendChild(m.XMLElement)
+
+					ENDIF
+
 				ENDIF
 
-				 m._JSon = This.ConvertObject(LTRIM(SUBSTR(m._JSon, 2), 0, " ", CHR(13), CHR(10), CHR(9)), "", m.XMLRoot, BITOR(m.Flags, JX_MUST_FOLLOW))
+				This.ParsePosition = m._JSon
+				m.Next_JSon = LEFT(m._JSon, 1)
 
-			CASE m.Next_JSon == "]" AND BITAND(m.Flags, JX_IN_ARRAY + JX_IS_ARRAY) != 0
-				* signal end of array
+				DO CASE
+				CASE m.Next_JSon == ","
 
-			CASE m.Next_JSon == "}" AND BITAND(m.Flags, JX_IS_ARRAY) = 0
+					IF BITAND(m.Flags, JX_IN_OBJECT + JX_IN_ARRAY) = 0
+						THROW "Elements not allowed"
+					ENDIF
 
-				m._JSon = SUBSTR(m._JSon, 2)
+					m._JSon = LTRIM(SUBSTR(m._JSon, 2), 0,  " ", CHR(13), CHR(10), CHR(9))
 
-			CASE !EMPTY(m._JSon)
+				CASE m.Next_JSon == "]" AND BITAND(m.Flags, JX_IN_ARRAY + JX_IS_ARRAY) != 0
 
-				THROW "Unexpected character"
+					* signal end of array
+					RETURN m._JSon
 
-			ENDCASE
+				CASE m.Next_JSon == "}" AND BITAND(m.Flags, JX_IS_ARRAY) = 0
 
-		ENDIF
+					* signal end of object
+					RETURN LTRIM(SUBSTR(m._JSon, 2), 0,  " ", CHR(13), CHR(10), CHR(9))
 
-		RETURN LTRIM(m._JSon, 0,  " ", CHR(13), CHR(10), CHR(9))
+				CASE !EMPTY(m._JSon)
+
+					THROW "Unexpected character"
+
+				ENDCASE
+
+			ENDIF
+
+		ENDDO
+	
+		RETURN ""
 
 	ENDFUNC
 
