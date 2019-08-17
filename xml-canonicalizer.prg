@@ -321,7 +321,8 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 							* and get its contents
 							m.ObjectContents = This._canonAttribute(m.ObjSource.xmlname, m.ObjectName, m.ChildObject.xmltext.item(1))
 							* save it for later (it will be output sorted by namespace/name order)
-							m.Attributes.Add(m.ObjectContents, PADR(NVL(m.ChildObject.xmlns, "") + m.ChildObject.xmlname, 200))
+							m.Attributes.Add(m.ObjectContents, ;
+									PADR(NVL(m.ChildObject.xmlns, NVL(m.ObjSource.xmlns, "")) + CHR(9) + m.ChildObject.xmlname, 200))
 
 						ENDFOR
 					ENDIF
