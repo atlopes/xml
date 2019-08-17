@@ -307,7 +307,7 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 
 							* if it is an array, process every child
 							IF m.ChildrenIsArray
-								m.ChildElementReference = m.ChildReference + "[" + TRANSFORM(m.ArrayLoop) + "]"
+								m.ChildElementReference = m.ChildReference + "(" + TRANSFORM(m.ArrayLoop) + ")"
 								m.ChildObject = EVALUATE(m.ChildElementReference)
 							ELSE
 							* or just the single child with the name
@@ -321,7 +321,7 @@ DEFINE CLASS XMLCanonicalizer AS Custom
 							* and get its contents
 							m.ObjectContents = This._canonAttribute(m.ObjSource.xmlname, m.ObjectName, m.ChildObject.xmltext.item(1))
 							* save it for later (it will be output sorted by namespace/name order)
-							m.Attributes.Add(m.ObjectContents, PADR(NVL(m.ChildObject.xmlns, ":") + m.ChildObject.xmlname, 200))
+							m.Attributes.Add(m.ObjectContents, PADR(NVL(m.ChildObject.xmlns, "") + m.ChildObject.xmlname, 200))
 
 						ENDFOR
 					ENDIF
