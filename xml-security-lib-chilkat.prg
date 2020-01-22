@@ -130,7 +130,15 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 
 		m.PKey = CREATEOBJECT("Chilkat_9_5_0.PrivateKey")
 
-		RETURN IIF(m.PKey.LoadPem(m.PEM) = 1, m.PKey, .NULL.)
+		IF m.PKey.LoadPEM(m.PEM) = 1
+			RETURN m.PKey
+		ELSE
+			IF This.Cert.HasKeyContainer = 1 AND This.Cert.Silent = 0
+				RETURN "HSM"
+			ENDIF
+		ENDIF
+
+		RETURN .NULL.
 
 	ENDFUNC
 
@@ -198,6 +206,8 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 
 	FUNCTION SignData (Data AS String, XMLKey AS XMLSecurityKey) AS String
 
+		SAFETHIS
+
 		This.BinaryData.LoadEncoded(STRCONV(m.Data, 13), "base64")
 
 		LOCAL Algorithm AS String
@@ -212,7 +222,11 @@ DEFINE CLASS XMLSecurityLibChilkat AS XMLSecurityLib
 				m.Algorithm = "sha-" + SUBSTR(m.Algorithm, 4)
 			ENDIF
 
-			This.RSA.ImportPrivateKeyObj(m.XMLKey.Key)
+			IF !(VARTYPE(m.XMLKey.Key) == "C" AND m.XMLKey.Key == "HSM")
+				This.RSA.ImportPrivateKeyObj(m.XMLKey.Key)
+			ELSE
+				This.RSA.SetX509Cert(This.Cert, 1)
+			ENDIF
 
 			RETURN This.RSA.SignBytes(This.BinaryData.GetBinary(), m.Algorithm)
 

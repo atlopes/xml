@@ -32,9 +32,8 @@ DEFINE CLASS XMLService AS Custom
 	LPARAMETERS tcDocument
 	LOCAL llResult as Boolean
 		TRY
-			This.XMLParser.async = .T.
-			This.XMLParser.LoadXML(m.tcDocument)
-			m.llResult = .T.
+			This.XMLParser.async = .F.
+			m.llResult = This.XMLParser.LoadXML(m.tcDocument) OR This.XMLParser.Load(m.tcDocument)
 		CATCH
 			m.llResult = .F.
 		ENDTRY

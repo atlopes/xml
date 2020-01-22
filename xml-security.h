@@ -27,7 +27,7 @@
 #DEFINE	RSA_SHA512				"http://www.w3.org/2001/04/xmldsig-more#rsa-sha512"
 #DEFINE	HMAC_SHA1				"http://www.w3.org/2000/09/xmldsig#hmac-sha1"
 #DEFINE	HASH_SHA1				"http://www.w3.org/2000/09/xmldsig#sha1"
-#DEFINE	HASH_SHA256				"http://www.w3.org/2001/04/xmlenc#sha256'"
+#DEFINE	HASH_SHA256				"http://www.w3.org/2001/04/xmlenc#sha256"
 #DEFINE	HASH_SHA384				"http://www.w3.org/2001/04/xmldsig-more#sha384"
 #DEFINE	HASH_SHA512				"http://www.w3.org/2001/04/xmlenc#sha512"
 #DEFINE	HASH_RIPEMD160			"http://www.w3.org/2001/04/xmlenc#ripemd160"
