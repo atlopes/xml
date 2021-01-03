@@ -251,9 +251,9 @@ DEFINE CLASS XMLSerializer AS Custom
 
 		SAFETHIS
 
-		ASSERT TYPE("m.Source") $ "CO" MESSAGE "Source must be a string or an object."
-		ASSERT PCOUNT() < 2 OR TYPE("m.XPath") == "C" MESSAGE "XPath must be a string expression."
-		ASSERT PCOUNT() < 3 OR TYPE("m.Namespaces") $ "CO" MESSAGE "Namespaces must be a string or an object."
+		ASSERT VARTYPE(m.Source) $ "CO" MESSAGE "Source must be a string or an object."
+		ASSERT PCOUNT() < 2 OR VARTYPE(m.XPath) == "C" MESSAGE "XPath must be a string expression."
+		ASSERT PCOUNT() < 3 OR VARTYPE(m.Namespaces) $ "CO" MESSAGE "Namespaces must be a string or an object."
 
 		LOCAL VFPObject AS Empty
 		LOCAL SourceObject AS MSXML2.DOMDocument60
@@ -267,7 +267,7 @@ DEFINE CLASS XMLSerializer AS Custom
 		This.XMLLine = 0
 
 		* if an XMLDOM object was passed, use it as the source
-		IF TYPE("m.Source") == "O"
+		IF VARTYPE(m.Source) == "O"
 
 			m.SourceObject = m.Source
 
@@ -302,7 +302,7 @@ DEFINE CLASS XMLSerializer AS Custom
 					* the namespaces used in the XPath expression may be set as a string or as a collection 
 					IF PCOUNT() = 3
 						m.CurrentNS = m.SourceObject.getProperty("SelectionNamespaces")
-						IF TYPE("m.Namespaces") == "C"
+						IF VARTYPE(m.Namespaces) == "C"
 							m.SelectionNS = m.Namespaces
 						ELSE
 							m.SelectionNS = ""
@@ -371,8 +371,8 @@ DEFINE CLASS XMLSerializer AS Custom
 
 		SAFETHIS
 
-		ASSERT TYPE("m.Source") = "O" MESSAGE "Source must be an object."
-		ASSERT PCOUNT() = 1 OR TYPE("m.Root") = "C" MESSAGE "Root name must be a string."
+		ASSERT VARTYPE(m.Source) = "O" MESSAGE "Source must be an object."
+		ASSERT PCOUNT() = 1 OR VARTYPE(m.Root) = "C" MESSAGE "Root name must be a string."
 
 		LOCAL XMLObject AS MSXML2.DOMDocument60
 		LOCAL Namespaces AS Collection
@@ -391,7 +391,7 @@ DEFINE CLASS XMLSerializer AS Custom
 		DO CASE
 
 		* source must be an active VFP object
-		CASE TYPE("m.Source") != "O" OR ISNULL(m.Source)
+		CASE VARTYPE(m.Source) != "O" OR ISNULL(m.Source)
 			RETURN .NULL.
 			
 		CASE PCOUNT() = 1
@@ -484,7 +484,7 @@ DEFINE CLASS XMLSerializer AS Custom
 	FUNCTION GetText
 	LPARAMETERS Element
 
-		ASSERT TYPE("m.Element") = "O" MESSAGE "Element must be an object."
+		ASSERT VARTYPE(m.Element) == "O" MESSAGE "Element must be an object."
 
 		LOCAL ElementText AS String
 		LOCAL LoopIndex AS Integer
@@ -519,7 +519,7 @@ DEFINE CLASS XMLSerializer AS Custom
 	FUNCTION GetArrayLength
 	LPARAMETERS Element
 
-		ASSERT TYPE("m.Element") = "O" MESSAGE "Element must be an object."
+		ASSERT VARTYPE(m.Element) == "O" MESSAGE "Element must be an object."
 
 		LOCAL ArrayLength AS Integer
 
@@ -559,8 +559,8 @@ DEFINE CLASS XMLSerializer AS Custom
 
 		SAFETHIS
 
-		ASSERT TYPE("m.Element") = "O" MESSAGE "Element must be an object."
-		ASSERT TYPE("m.Options") $ "LN" MESSAGE "Options must be logical or a number."
+		ASSERT VARTYPE(m.Element) == "O" MESSAGE "Element must be an object."
+		ASSERT VARTYPE(m.Options) $ "LN" MESSAGE "Options must be logical or a number."
 
 		* the segment of the simple copy created at this level
 		LOCAL SimpleCopy AS Empty
@@ -579,7 +579,7 @@ DEFINE CLASS XMLSerializer AS Custom
 		LOCAL LoopArrayIndex AS Integer
 		
 		* make sure that Options is 0, 1 or 2
-		IF TYPE("m.Options") == "L"
+		IF VARTYPE(m.Options) == "L"
 			m.Options = IIF(m.Options, 1, 0)
 		ELSE
 			IF !INLIST(VAL(TRANSFORM(m.Options)), 1, 2)
@@ -604,10 +604,10 @@ DEFINE CLASS XMLSerializer AS Custom
 				IF m.ArrayLength != 0
 
 					* create the full array (we have the number of elements, beforehand)
-					ADDPROPERTY(m.SimpleCopy, m.Property + "[" + TRANSFORM(m.ArrayLength) + "]")
+					ADDPROPERTY(m.SimpleCopy, m.Property + "[" + LTRIM(STR(m.ArrayLength)) + "]")
 					IF m.Options = 0
 						* and a sibling <name>_value_[], to hold values if needed
-						ADDPROPERTY(m.SimpleCopy, m.Property + XML_SIMPLETEXT + "[" + TRANSFORM(m.ArrayLength) + "]")
+						ADDPROPERTY(m.SimpleCopy, m.Property + XML_SIMPLETEXT + "[" + LTRIM(STR(m.ArrayLength)) + "]")
 						* for now, there are no values assigned to this new array
 						m.ArrayNoValues = .T.
 					ENDIF
@@ -616,7 +616,7 @@ DEFINE CLASS XMLSerializer AS Custom
 					FOR m.LoopArrayIndex = 1 TO m.ArrayLength
 					
 						* create a reference to it
-						m.ArrayProperty = m.Property + "[" + TRANSFORM(m.LoopArrayIndex) + "]"
+						m.ArrayProperty = m.Property + "[" + LTRIM(STR(m.LoopArrayIndex)) + "]"
 						* fetch the simplified text value
 						m.TextValue = EVL(This.GetText(m.Element.&ArrayProperty.), "")
 						* and create the simplified version of the tree under it (if there is one)
@@ -633,7 +633,7 @@ DEFINE CLASS XMLSerializer AS Custom
 							* store the downtree in the property
 							m.SimpleCopy.&ArrayProperty. = m.DownTree
 							* and the text value in the sibling array
-							m.ArrayProperty = m.Property + XML_SIMPLETEXT +"[" + TRANSFORM(m.LoopArrayIndex) + "]"
+							m.ArrayProperty = m.Property + XML_SIMPLETEXT +"[" + LTRIM(STR(m.LoopArrayIndex)) + "]"
 							m.SimpleCopy.&ArrayProperty. = m.TextValue
 							* signal that we used the sibling array
 							m.ArrayNoValues = .F.
@@ -835,8 +835,8 @@ DEFINE CLASS XMLSerializer AS Custom
 								m.Texts = CREATEOBJECT("Collection")
 								m.Source = CREATEOBJECT("Collection")
 							ENDIF
-							m.Texts.Add(m.TextNode.text, IIF(m.TextNode.nodeType = NODE_TEXT, XML_ISTEXT, XML_ISCDATA) + TRANSFORM(m.TextNodeIndex))
-							m.Source.Add(m.TextNode.xml, IIF(m.TextNode.nodeType = NODE_TEXT, XML_ISTEXT, XML_ISCDATA) + TRANSFORM(m.TextNodeIndex))
+							m.Texts.Add(m.TextNode.text, IIF(m.TextNode.nodeType = NODE_TEXT, XML_ISTEXT, XML_ISCDATA) + LTRIM(STR(m.TextNodeIndex)))
+							m.Source.Add(m.TextNode.xml, IIF(m.TextNode.nodeType = NODE_TEXT, XML_ISTEXT, XML_ISCDATA) + LTRIM(STR(m.TextNodeIndex)))
 
 						ENDIF
 					ENDFOR
@@ -923,6 +923,7 @@ DEFINE CLASS XMLSerializer AS Custom
 					
 						* get a name, again, now safe for array names
 						This.DomainNamer.SetProperty("VFPNamer", "SafeArrayName", .T.)
+						This.DomainNamer.SetProperty("VFPNamer", "AllowReserved", .F.)
 						m.NewName = This.DomainNamer.GetName("VFPNamer")
 						
 						* if the name was not already in use, use it now for the property
@@ -953,6 +954,7 @@ DEFINE CLASS XMLSerializer AS Custom
 
 						* get a name, again, now safe for array names
 						This.DomainNamer.SetProperty("VFPNamer", "SafeArrayName", .T.)
+						This.DomainNamer.SetProperty("VFPNamer", "AllowReserved", .F.)
 						m.NewArrayName = This.DomainNamer.GetName("VFPNamer")
 
 						* if an array has not already been set with this adjusted name 
@@ -980,7 +982,7 @@ DEFINE CLASS XMLSerializer AS Custom
 					* set the counter for the array
 					m.VFPObject.&NewName.[1].xmlcount = m.VFPObject.&NewName.[1].xmlcount + 1
 					* create a new element at the end of the array
-					m.NewName = m.NewName + "[" + TRANSFORM(ALEN(m.VFPObject.&NewName.) + 1) + "]"
+					m.NewName = m.NewName + "[" + LTRIM(STR(ALEN(m.VFPObject.&NewName.) + 1)) + "]"
 					DIMENSION m.VFPObject.&NewName.
 					* set its value
 					m.VFPObject.&NewName. = m.NewValue
@@ -1102,7 +1104,7 @@ DEFINE CLASS XMLSerializer AS Custom
 					m.NamespaceEntry = m.Namespaces.GetKey(m.ObjectNamespace)
 					IF m.NamespaceEntry = 0
 						* new entry, if it wasn't defined, yet
-						m.Prefix = "ns" + TRANSFORM(m.Namespaces.Count + 1)
+						m.Prefix = "ns" + LTRIM(STR(m.Namespaces.Count + 1))
 						m.Namespaces.Add(m.Prefix, m.ObjectNamespace)
 					ELSE
 						* or just key the prefix, otherwise
@@ -1138,7 +1140,7 @@ DEFINE CLASS XMLSerializer AS Custom
 		m.Positions = CREATEOBJECT("Collection")
 
 		* the children of the current VFP object / property
-		IF TYPE("m.ObjSource") == "O" AND !ISNULL(m.ObjSource) AND AMEMBERS(m.Properties, m.ObjSource, 0, "U") != 0
+		IF VARTYPE(m.ObjSource) == "O" AND !ISNULL(m.ObjSource) AND AMEMBERS(m.Properties, m.ObjSource, 0, "U") != 0
 
 			* will be processed	
 			FOR m.Loop = 1 TO ALEN(m.Properties)
@@ -1167,7 +1169,7 @@ DEFINE CLASS XMLSerializer AS Custom
 
 						* if it is an array, process every element
 						FOR m.ArrayLoop = 1 TO ALEN(&ChildReference.)
-							m.ChildElementReference = m.ChildReference + "[" + TRANSFORM(m.ArrayLoop) + "]"
+							m.ChildElementReference = m.ChildReference + "[" + LTRIM(STR(m.ArrayLoop)) + "]"
 							This._prepareVFPNodeToXML(m.ObjSource, m.Positions, m.ChildType, m.ChildElementReference, SORTNOTSET + TRANSFORM(m.Loop, SORTFORMAT) + TRANSFORM(m.ArrayLoop, SORTFORMAT))
 						ENDFOR
 					ELSE
@@ -1182,8 +1184,8 @@ DEFINE CLASS XMLSerializer AS Custom
 			
 				FOR m.TextLoop = 1 TO m.ObjSource.xmltext.Count
 
-					m.ChildReference = "m.ObjSource.xmltext.Item(" + TRANSFORM(m.TextLoop) + ")"
-					m.TextPosition = EVALUATE("m.ObjSource.xmltext.GetKey(" + TRANSFORM(m.TextLoop) + ")")
+					m.ChildReference = "m.ObjSource.xmltext.Item(" + LTRIM(STR(m.TextLoop)) + ")"
+					m.TextPosition = EVALUATE("m.ObjSource.xmltext.GetKey(" + LTRIM(STR(m.TextLoop)) + ")")
 					m.Positions.Add(LEFT(m.TextPosition, 1) + m.ChildReference, TRANSFORM(VAL(SUBSTR(m.TextPosition, 2)), SORTFORMAT))
 
 				ENDFOR
@@ -1333,7 +1335,7 @@ DEFINE CLASS XMLSerializer AS Custom
 		m.NewNode = This._newVFPNode(m.Name, m.Texts, m.XML, .NULL., .NULL., m.Position)
 
 		m.NewCount = m.Count + 1
-		m.Nodes = m.NodeType + "[" + TRANSFORM(m.NewCount) + "]"
+		m.Nodes = m.NodeType + "[" + LTRIM(STR(m.NewCount)) + "]"
 
 		IF m.NewCount = 1
 			* no nodes yet?
