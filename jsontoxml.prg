@@ -292,6 +292,7 @@ DEFINE CLASS JsonToXML AS Custom
 			m.ChAt = SUBSTR(m.JSon, 2, 1)
 			m.EndPos = 2
 			m.Token = ""
+			m.JSBuffer = SUBSTR(m.JSon, 2)
 
 			DO WHILE m.EndPos <= m.JSonLength AND !m.ChAt == '"'
 				IF m.ChAt == "\"
