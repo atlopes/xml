@@ -171,6 +171,7 @@ DEFINE CLASS XMLSerializer AS Custom
 		* set the name translators for VFP and XML
 		This.DomainNamer.AttachProcessor("VFPNamer", LOCFILE("vfp-names.prg"))
 		This.DomainNamer.AttachProcessor("XMLNamer", LOCFILE("xml-names.prg"))
+		This.DomainNamer.SetProperty("VFPNamer", "AllowReserved", .F.)
 
 		* this is the XML parser (serialized XML DOM objects are created when needed)
 		This.Parser = CREATEOBJECT("MSXML2.DOMDocument.6.0")
@@ -886,7 +887,8 @@ DEFINE CLASS XMLSerializer AS Custom
 
 				* get an allowed VFP name, corresponding to the XML name
 				This.DomainNamer.SetOriginalName(.baseName)
-				This.DomainNamer.SetProperty("VFPNamer", "SafeArrayName", .F.)
+				This.DomainNamer.SetProperty("VFPNamer", "SafePropertyName", .T.)
+				This.DomainNamer.SetProperty("VFPNamer", "SafeArrayPropertyName", .F.)
 				m.NewName = This.DomainNamer.GetName("VFPNamer")
 				
 				* is it a new node?
@@ -922,8 +924,8 @@ DEFINE CLASS XMLSerializer AS Custom
 					ELSE
 					
 						* get a name, again, now safe for array names
-						This.DomainNamer.SetProperty("VFPNamer", "SafeArrayName", .T.)
-						This.DomainNamer.SetProperty("VFPNamer", "AllowReserved", .F.)
+						This.DomainNamer.SetProperty("VFPNamer", "SafePropertyName", .F.)
+						This.DomainNamer.SetProperty("VFPNamer", "SafePropertyArrayName", .T.)
 						m.NewName = This.DomainNamer.GetName("VFPNamer")
 						
 						* if the name was not already in use, use it now for the property
@@ -953,8 +955,8 @@ DEFINE CLASS XMLSerializer AS Custom
 					IF TYPE("m.VFPObject." + m.NewName, 1) != "A"
 
 						* get a name, again, now safe for array names
-						This.DomainNamer.SetProperty("VFPNamer", "SafeArrayName", .T.)
-						This.DomainNamer.SetProperty("VFPNamer", "AllowReserved", .F.)
+						This.DomainNamer.SetProperty("VFPNamer", "SafePropertyName", .F.)
+						This.DomainNamer.SetProperty("VFPNamer", "SafePropertyArrayName", .T.)
 						m.NewArrayName = This.DomainNamer.GetName("VFPNamer")
 
 						* if an array has not already been set with this adjusted name 

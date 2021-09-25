@@ -54,10 +54,13 @@ DEFINE CLASS XMLSecurityLibFoxCryptoNG AS XMLSecurityLib
 		LOCAL EncryptedData AS String
 		LOCAL SecretKey AS String
 		LOCAL IV AS String
+		LOCAL BSize AS Integer
 
-		m.IV = LEFT(m.Data, m.XMLKey.CryptParams("BlockSize"))
+		m.BSize = m.XMLKey.CryptParams("BlockSize")
 
-		m.EncryptedData = SUBSTR(m.Data, m.XMLKey.CryptParams("BlockSize") + 1)
+		m.IV = LEFT(m.Data, m.BSize)
+
+		m.EncryptedData = SUBSTR(m.Data, m.BSize + 1)
 
 		m.SecretKey = m.XMLKey.Key
 
@@ -67,7 +70,7 @@ DEFINE CLASS XMLSecurityLibFoxCryptoNG AS XMLSecurityLib
 
 		m.PaddedData = This.Crypto.Decrypt_AES(m.EncryptedData, m.SecretKey, m.IV)
 		IF !EMPTY(m.PaddedData)
-			m.Decrypted = This.UnpadISO10126(LEFT(m.PaddedData, LEN(m.PaddedData) - m.XMLKey.CryptParams("BlockSize")))
+			m.Decrypted = This.UnpadISO10126(LEFT(m.PaddedData, LEN(m.PaddedData) - m.BSize))
 		ENDIF
 
 		RETURN m.Decrypted
@@ -95,6 +98,7 @@ DEFINE CLASS XMLSecurityLibFoxCryptoNG AS XMLSecurityLib
 		ENDIF
 
 		m.BSize = m.XMLKey.CryptParams("BlockSize")
+
 		m.PaddedData = This.PadISO10126(m.Data, m.BSize)
 
 		m.IV = This.RandomBytes(m.BSize)
@@ -125,12 +129,16 @@ DEFINE CLASS XMLSecurityLibFoxCryptoNG AS XMLSecurityLib
 	FUNCTION RandomBytes (Size AS Integer) AS String
 
 		LOCAL BIndex AS Integer
-		LOCAL RandomBytes AS String
+		LOCAL RandomBytes AS Blob
+		LOCAL XoredBytes AS Blob
 
-		m.RandomBytes = ""
+		m.RandomBytes = 0h
+		m.XoredBytes = 0h
 		FOR m.BIndex = 1 TO m.Size
-			m.RandomBytes = m.RandomBytes + CHR(INT(RAND() * 255))
+			m.RandomBytes = m.RandomBytes + CAST(CHR(INT(RAND() * 255)) AS Blob)
+			m.XoredBytes = CAST(CHR(INT(RAND() * 255)) AS Blob) + m.XoredBytes
 		ENDFOR
+		m.RandomBytes = BITXOR(m.RandomBytes, m.XoredBytes)
 
 		RETURN m.RandomBytes
 
